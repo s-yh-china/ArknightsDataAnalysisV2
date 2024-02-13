@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captcha Test Page</title>
+</head>
+<body>
+
+<h1>Captcha Test Page</h1>
+
+<img id="captchaImage" src="" alt="Captcha Image">
+<input type="text" id="captchaCode" placeholder="Enter Captcha Code">
+<button onclick="validateCaptcha()">Submit</button>
+<button onclick="refreshCaptcha()">Refresh Captcha</button>
+
+<script>
+    // Function to fetch captcha image and token
+    function fetchCaptcha() {
+        fetch('http://127.0.0.1:8000/api/captcha/create')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('captchaImage').src = data.image;
+                document.getElementById('captchaCode').value = ''; // Clear previous code
+                window.captchaToken = data.captcha_token; // Store captcha token
+            })
+            .catch(error => console.error('Error fetching captcha:', error));
+    }
+
+    // Function to validate captcha
+    function validateCaptcha() {
+        const captchaCode = document.getElementById('captchaCode').value;
+
+        if (!captchaCode) {
+            alert('Please enter the captcha code.');
+            return;
+        }
+
+        const requestBody = {
+            captcha_token: window.captchaToken,
+            code: captchaCode
+        };
+
+        fetch('http://127.0.0.1:8000/api/captcha/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    alert('Captcha validation successful!');
+                    // Optionally, you can fetch a new captcha for the next attempt
+                    fetchCaptcha();
+                } else {
+                    alert('Captcha validation failed. Please try again.');
+                }
+            })
+            .catch(error => console.error('Error validating captcha:', error));
+    }
+
+    // Function to manually refresh captcha
+    function refreshCaptcha() {
+        fetchCaptcha();
+    }
+
+    // Fetch the initial captcha on page load
+    fetchCaptcha();
+</script>
+
+</body>
+</html>
