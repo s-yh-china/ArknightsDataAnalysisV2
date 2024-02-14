@@ -3,6 +3,7 @@ from backapi import users, captcha, accounts
 from fastapi import FastAPI
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 config = ConfigData().get_data().get('safe')
 
@@ -13,6 +14,13 @@ app.include_router(captcha.router)
 app.include_router(accounts.router)
 
 if config['DEBUG']:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=['*'],
+        allow_credentials=True,
+        allow_methods=['*'],
+        allow_headers=['*'],
+    )
     app.mount("/test", StaticFiles(directory="test"), name="test")
 
 
