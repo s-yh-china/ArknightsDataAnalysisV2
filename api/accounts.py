@@ -24,6 +24,9 @@ class AccountInDB(AccountInfo):
     class Config:
         from_attributes = True
 
+    async def get_db(self) -> Account | None:
+        return await database_manager.get_or_none(Account, Account.uid == self.uid)
+
 
 class AccountRefresh(AccountBase):
     fcore: bool
@@ -94,7 +97,7 @@ async def del_account_by_uid(account: AccountInDB):  # TODO 还没做
 
 
 async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefresh):
-    db_account: Account = await database_manager.get_or_none(Account, uid=account.uid)
+    db_account: Account = await account.get_db()
     if not db_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

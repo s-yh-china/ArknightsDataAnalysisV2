@@ -61,6 +61,12 @@ async def get_user(username: str) -> UserInDB | None:
         return UserInDB(**user.__data__)
 
 
+async def get_user_email(email: str) -> UserInDB | None:
+    user: DBUser = await database_manager.get_or_none(DBUser, email=email)
+    if user:
+        return UserInDB(**user.__data__)
+
+
 async def authenticate_user(username: str, password: str) -> UserInfo | bool:
     user: UserInDB | None = await get_user(username)
     if not user:

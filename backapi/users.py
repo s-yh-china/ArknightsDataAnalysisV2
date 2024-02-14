@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from api.captcha import valid_captcha_code
-from api.users import Token, UserInfo, UserCreate
+from api.users import Token, UserInfo, UserCreate, get_user_email
 from api.users import authenticate_user, get_current_active_user, get_user, create_user
 
 from api.utils import create_jwt
@@ -47,6 +47,8 @@ def refresh_token(current_user: UserInfo = Depends(get_current_active_user)) -> 
 @router.post("/register", response_model=UserInfo, dependencies=[Depends(valid_captcha_code)])
 async def register(data: UserCreate) -> UserInfo:
     user: UserInfo = await get_user(data.username)
+    if not user:
+        user = await get_user_email(data.email)
     if user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
