@@ -3,11 +3,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from api.captcha import valid_captcha_code
-from api.users import Token, UserInfo, UserCreate, get_user_email
-from api.users import authenticate_user, get_current_active_user, get_user, create_user
+from api.users import Token, UserInfo, UserCreate, UserInDB, UserConfig
+from api.users import authenticate_user, get_current_active_user, get_user, create_user, get_user_email
+from api.users import modify_user_config
 
-from api.utils import create_jwt
+from api.captcha import valid_captcha_code
+from api.utils import create_jwt, JustMsgModel
 
 router = APIRouter(
     prefix="/api/users",
@@ -63,3 +64,9 @@ async def register(data: UserCreate) -> UserInfo:
 @router.get("/info", response_model=UserInfo)
 async def info(current_user: UserInfo = Depends(get_current_active_user)) -> UserInfo:
     return current_user
+
+
+@router.post("/modify_config", response_model=JustMsgModel)
+async def modify_config(config: UserConfig, current_user: UserInDB = Depends(get_current_active_user)) -> JustMsgModel:
+    await modify_user_config(current_user, config)
+    return JustMsgModel()

@@ -1,4 +1,6 @@
 import os
+from enum import Enum
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
@@ -25,18 +27,31 @@ class UserBase(BaseModel):
     email: str
 
 
-class UserBaseInDB(UserBase):
-    class Config:
-        from_attributes = True
-
-
 class UserCreate(UserBase):
     password: str
 
 
+class UsernameDisplayStatus(Enum):
+    FULL = 'FULL'
+    HIDE_MID = 'HIDE_MID'
+    HIDE_ALL = 'HIDE_ALL'
+
+
+class UserConfig(BaseModel):
+    nickname: str = '未设置'
+    private_qq: int = 0
+
+    is_statistics: bool = True
+    is_lucky_rank: bool = False
+    is_auto_gift: bool = False
+
+    name_display: UsernameDisplayStatus = UsernameDisplayStatus.HIDE_ALL
+    nickname_display: bool = False
+
+
 class UserInfo(UserBase):
     disabled: bool
-    user_config: dict
+    user_config: UserConfig
 
 
 class UserInDB(UserInfo):
@@ -45,6 +60,9 @@ class UserInDB(UserInfo):
 
     class Config:
         from_attributes = True
+
+    async def get_db(self) -> DBUser | None:
+        return await database_manager.get_or_none(DBUser, DBUser.username == self.username)
 
 
 password_context: CryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -58,13 +76,15 @@ def verify_password(plain_password: str, slat: str, hashed_password: str) -> boo
 async def get_user(username: str) -> UserInDB | None:
     user: DBUser = await database_manager.get_or_none(DBUser, username=username)
     if user:
-        return UserInDB(**user.__data__)
+        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
+        return UserInDB.model_validate({**user.__data__, "user_config": user_config})
 
 
 async def get_user_email(email: str) -> UserInDB | None:
     user: DBUser = await database_manager.get_or_none(DBUser, email=email)
     if user:
-        return UserInDB(**user.__data__)
+        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
+        return UserInDB.model_validate({**user.__data__, "user_config": user_config})
 
 
 async def authenticate_user(username: str, password: str) -> UserInfo | bool:
@@ -111,8 +131,14 @@ def get_password_hash(password: str, slat: str) -> str:
 async def create_user(username: str, password: str, email: str) -> UserInfo:
     slat: str = os.urandom(16).hex()
     password = get_password_hash(password, slat)
-    await database_manager.create(DBUser, username=username, hashed_password=password, email=email, slat=slat, user_config={})
+    await database_manager.create(DBUser, username=username, hashed_password=password, email=email, slat=slat, user_config=UserConfig().model_dump_json())
     return await get_user(username)
+
+
+async def modify_user_config(user: UserInDB, config: UserConfig):
+    db_user = await user.get_db()
+    db_user.user_config = config.model_dump_json()
+    await database_manager.update(db_user)
 
 # TODO 邮箱验证
 # TODO 找回账号
