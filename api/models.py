@@ -100,7 +100,7 @@ class OSROperator(BaseModel):
 
 class Platform(str, Enum):
     def __new__(cls, _value: str, platform_id: int):
-        _obj = str.__new__(cls, [_value])
+        _obj = str.__new__(cls, _value)
         _obj._value_ = _value
         _obj.platform_id = platform_id
         return _obj
