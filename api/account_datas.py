@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from collections import defaultdict
 
-from .models import Account, OperatorSearchRecord, database_manager, OSRPool, OSROperator
+from .models import database_manager
+from .models import Account, OperatorSearchRecord, OSRPool, OSROperator, Platform, PayRecord
 from .accounts import AccountInDB
 
 
@@ -53,6 +54,18 @@ class OSRPoolInfo(BaseModel):
                  'osr_five_record': [{'time': '2024-02-07T11:59:13', 'name': '灰毫', 'rarity': 5, 'count': 10, 'is_new': False, 'is_up': False}, {'time': '2024-02-06T10:39:03', 'name': '贾维', 'rarity': 5, 'count': 22, 'is_new': False, 'is_up': False}, {'time': '2024-02-02T01:25:31', 'name': '小满', 'rarity': 5, 'count': 14, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:07:00', 'name': '小满', 'rarity': 5, 'count': 20, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:03:44', 'name': '掠风', 'rarity': 5, 'count': 22, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:01:56', 'name': '小满', 'rarity': 5, 'count': 8, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:01:46', 'name': '小满', 'rarity': 5, 'count': 11, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:01:36', 'name': '小满', 'rarity': 5, 'count': 10, 'is_new': True, 'is_up': False}]}
             ]
         }
+
+
+class PayInfo(BaseModel):
+    time: datetime
+    name: str
+    amount: int
+    platform: Platform
+
+
+class PayRecordInfo(BaseModel):
+    total_money: int
+    pay_info: list[PayInfo]
 
 
 async def get_osr_info(account: AccountInDB) -> OSRInfo:
@@ -217,3 +230,19 @@ async def get_osr_pool_info(account: AccountInDB, pool_name: str) -> OSRPoolInfo
     }
 
     return OSRPoolInfo.model_validate(osr_info)
+
+
+async def get_pay_record_info(account: AccountInDB) -> PayRecordInfo:
+    db_account = await account.get_db()
+
+    pay_info = []
+    total_money = 0
+
+    pay_records = await database_manager.execute(PayRecord.select().where(PayRecord.account == db_account).order_by(PayRecord.pay_time.desc()))
+    pay_record: PayRecord
+    for pay_record in pay_records:
+        info = PayInfo(time=datetime.fromtimestamp(pay_record.pay_time), name=pay_record.name, amount=pay_record.amount / 100, platform=pay_record.platform)
+        pay_info.append(info)
+        total_money += pay_record.amount / 100
+
+    return PayRecordInfo(total_money=total_money, pay_info=pay_info)
