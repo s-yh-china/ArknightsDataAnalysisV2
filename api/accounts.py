@@ -51,6 +51,8 @@ async def get_account_by_token(account_create: AccountCreate) -> AccountInDB:
     created: bool
     analysis, created = await ArknightsDataAnalysis.get_or_create_analysis(account_create.token, account_create.channel)
     if analysis:
+        if created:
+            task = asyncio.create_task(analysis.fetch_data(True))
         return AccountInDB(**analysis.account.__data__)
     else:
         raise HTTPException(
