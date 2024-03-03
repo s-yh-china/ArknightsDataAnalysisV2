@@ -29,7 +29,7 @@ class AccountInDB(AccountInfo):
 
 
 class AccountRefresh(AccountBase):
-    fcore: bool
+    force: bool
     token: str = None
 
 
@@ -110,4 +110,4 @@ async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefres
     else:
         analysis = await ArknightsDataAnalysis.get_analysis(db_account)
 
-    task = asyncio.create_task(analysis.fetch_data(refresh_info.fcore))
+    task = asyncio.create_task(analysis.fetch_data(refresh_info.force))

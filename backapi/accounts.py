@@ -45,4 +45,4 @@ async def delete_account(account: AccountInDB = Depends(get_account_by_uid)):
 async def refresh_account(account: AccountRefresh, current_user: UserBase = Depends(get_current_active_user)):
     account_info: AccountInDB = await get_account_by_uid(account, current_user)
     await refresh_account_data(account_info, account)
-    return JustMsgModel()
+    return JustMsgModel(code=202, msg="accept")
