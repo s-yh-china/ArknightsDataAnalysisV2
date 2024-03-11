@@ -148,8 +148,8 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
         'osr_pool': list(reversed(osr_pool)),
         'osr_not_up_avg': osr_not_up_avg,
         'time': {
-            'start_time': str(datetime.fromtimestamp(records[0].time)) if records else datetime.fromtimestamp(0),
-            'end_time': str(datetime.fromtimestamp(records[-1].time)) if records else datetime.fromtimestamp(0)
+            'start_time': datetime.fromtimestamp(records[0].time) if records else datetime.fromtimestamp(0),
+            'end_time': datetime.fromtimestamp(records[-1].time) if records else datetime.fromtimestamp(0)
         }
     }
 

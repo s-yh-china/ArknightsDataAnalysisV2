@@ -1,5 +1,5 @@
 from api.datas import ConfigData
-from backapi import users, captcha, accounts, account_datas
+from backapi import users, captcha, accounts, account_datas, statistics
 from fastapi import FastAPI
 
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +13,7 @@ app.include_router(users.router)
 app.include_router(captcha.router)
 app.include_router(accounts.router)
 app.include_router(account_datas.router)
+app.include_router(statistics.router)
 
 if config['DEBUG']:
     app.add_middleware(
