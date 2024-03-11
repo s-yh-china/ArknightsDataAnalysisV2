@@ -18,7 +18,8 @@
 <script>
     // Function to fetch captcha image and token
     function fetchCaptcha() {
-        fetch('http://127.0.0.1:8000/api/captcha/create')
+        const url = `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api/captcha/create`;
+        fetch(url)
             .then(response => response.json())
             .then(data => {
                 document.getElementById('captchaImage').src = data.image;
@@ -43,7 +44,8 @@
             code: captchaCode
         };
 
-        fetch('http://127.0.0.1:8000/api/captcha/validate', {
+        const url = `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api/captcha/validate`;
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
