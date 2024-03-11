@@ -183,6 +183,13 @@
                 "黍",
                 "左乐"
             ]
+        },
+        "突破，援助，任务循环": {
+            "type": "突破，援助，任务循环",
+            "is_up_pool": true,
+            "up_operators": [
+                "艾拉"
+            ]
         }
     },
     "pool_progress": [
