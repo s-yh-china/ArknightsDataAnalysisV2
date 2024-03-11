@@ -41,7 +41,7 @@ class AccountCreate(BaseModel):
 async def get_accounts(user: UserBase) -> list[AccountInDB]:
     accounts = []
     for account in await database_manager.execute(Account.select().join_from(Account, DBUser).where(DBUser.username == user.username)):
-        await ArknightsDataAnalysis.get_analysis(account)  # TODO 太慢了 单独处理为一个api
+        await ArknightsDataAnalysis.get_analysis(account)
         accounts.append(AccountInDB(**account.__data__))
     return accounts
 

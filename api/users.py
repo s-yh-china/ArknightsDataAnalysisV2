@@ -1,5 +1,4 @@
 import os
-from datetime import timedelta
 from enum import Enum
 
 from fastapi import Depends, HTTPException, status
@@ -11,7 +10,7 @@ from pydantic import BaseModel
 
 from .models import DBUser
 from .models import database_manager
-from .utils import decode_jwt, create_jwt, JustMsgModel
+from .utils import decode_jwt
 
 
 class Token(BaseModel):
@@ -64,10 +63,6 @@ class UserInDB(UserInfo):
 
     async def get_db(self) -> DBUser | None:
         return await database_manager.get_or_none(DBUser, DBUser.username == self.username)
-
-
-class EmailVerifyInfo(JustMsgModel):
-    type: str
 
 
 password_context: CryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -144,68 +139,3 @@ async def modify_user_config(user: UserInDB, config: UserConfig):
     db_user = await user.get_db()
     db_user.user_config = config.model_dump_json()
     await database_manager.update(db_user)
-
-
-async def email_verify(verify_token: str) -> EmailVerifyInfo:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-
-    try:
-        payload = decode_jwt(verify_token)
-        email: str = payload.get("email")
-        type: str = payload.get("type")
-
-        if email is None or type is None:
-            raise credentials_exception
-        user: UserInDB = await get_user_email(email)
-        if user is None:
-            raise credentials_exception
-        db_user = await user.get_db()
-
-        match type:
-            case "verify_email":
-                db_user.disabled = False
-                await database_manager.update(db_user)
-            case "change_password":
-                new_password: str = payload.get("new_password")
-                db_user.hashed_password = get_password_hash(new_password, db_user.slat)
-                await database_manager.update(db_user)
-            case _:
-                raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    return EmailVerifyInfo(type=type)
-
-
-async def create_email_verify(email: str, type: str, ex_data: dict) -> str:
-    user: UserInDB = await get_user_email(email)
-    db_user: DBUser = await user.get_db()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User not found",
-        )
-
-    data = {
-        'email': email,
-        'type': type
-    }
-
-    match type:
-        case "verify_email":
-            db_user.disabled = True
-            await database_manager.update(db_user)
-        case "change_password":
-            data.update({
-                'new_password': ex_data.get('new_password')
-            })
-        case _:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid type"
-            )
-
-    return create_jwt(data, timedelta(hours=12))

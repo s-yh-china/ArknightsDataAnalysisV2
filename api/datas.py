@@ -71,6 +71,18 @@ class ConfigData(JsonData):
             'ALGORITHM': 'HS256',
             'DEBUG': False
         },
+        'user': {
+            'email_verify': False,
+            'password_reset': False
+        },
+        'email': {
+            'smtp': '',
+            'port': 465,
+            'username': '',
+            'password': '',
+            'use_tls': True,
+            'link': ''
+        },
         'mysql': {
             'host': 'localhost',
             'user': 'root',

@@ -1,8 +1,10 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 
+from api.datas import ConfigData
+from api.email import EmailResetPassword, create_email_verify, send_email
 from api.users import Token, UserInfo, UserCreate, UserInDB, UserConfig
 from api.users import authenticate_user, get_current_active_user, get_user, create_user, get_user_email
 from api.users import modify_user_config
@@ -17,6 +19,8 @@ router = APIRouter(
 )
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+config = ConfigData().get_data()['user']
 
 
 @router.post("/login_password")
@@ -46,7 +50,7 @@ def refresh_token(current_user: UserInfo = Depends(get_current_active_user)) -> 
 
 
 @router.post("/register", response_model=UserInfo, dependencies=[Depends(valid_captcha_code)])
-async def register(data: UserCreate) -> UserInfo:
+async def register(data: UserCreate, tasks: BackgroundTasks) -> UserInfo:
     user: UserInfo = await get_user(data.username)
     if not user:
         user = await get_user_email(data.email)
@@ -58,6 +62,11 @@ async def register(data: UserCreate) -> UserInfo:
         )
 
     user = await create_user(data.username, data.password, data.email)
+
+    if config['verify_email']:
+        token = await create_email_verify(data.email, 'verify_email')
+        tasks.add_task(send_email, data.email, token)
+
     return user
 
 
@@ -70,3 +79,15 @@ async def info(current_user: UserInfo = Depends(get_current_active_user)) -> Use
 async def modify_config(config: UserConfig, current_user: UserInDB = Depends(get_current_active_user)) -> JustMsgModel:
     await modify_user_config(current_user, config)
     return JustMsgModel()
+
+
+@router.post('/password_reset', response_model=JustMsgModel, status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(valid_captcha_code)])
+async def password_reset(payload: EmailResetPassword, tasks: BackgroundTasks):
+    if not config['password_reset']:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password reset is not allowed",
+        )
+    token = await create_email_verify(payload.email, 'change_password', payload.dict())
+    tasks.add_task(send_email, payload.email, token)
+    return JustMsgModel(code=202, msg="accept")
