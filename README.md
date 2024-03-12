@@ -31,7 +31,7 @@ https://github.com/s-yh-china/ArknightsDataAnalysisV2
 - [ ] 数据统计
     - [ ] 全站数据统计
     - [x] 欧非总榜
-    - [ ] 当期欧非榜
+    - [x] 当期欧非榜
     - [ ] 歪卡榜
 - [x] 安全
     - [x] 验证码
