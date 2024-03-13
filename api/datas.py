@@ -69,7 +69,13 @@ class ConfigData(JsonData):
         'safe': {
             'SECRET_KEY': os.urandom(32).hex(),
             'ALGORITHM': 'HS256',
-            'DEBUG': False
+            'DEBUG': False,
+            'CORS': {
+                'allow_origins': ['*'],
+                'allow_credentials': True,
+                'allow_methods': ['*'],
+                'allow_headers': ['*']
+            }
         },
         'user': {
             'email_verify': False,
@@ -82,6 +88,9 @@ class ConfigData(JsonData):
             'password': '',
             'use_tls': True,
             'link': ''
+        },
+        'analysis': {
+            'update_time': '0 4 * * *',
         },
         'mysql': {
             'host': 'localhost',

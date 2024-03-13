@@ -8,6 +8,7 @@ https://github.com/s-yh-china/ArknightsDataAnalysisV2
 
 ## 当前功能
 
+- [x] 数据定时刷新
 - [x] 基本账号系统
     - [x] 注册 登录
     - [x] 邮箱验证

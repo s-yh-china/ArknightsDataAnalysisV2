@@ -34,10 +34,13 @@ class ArknightsDataAnalysis:
         self.request: ArknightsDataRequest = request
 
     async def fetch_data(self, force: bool = False) -> None:
-        await self.fetch_osr(force)
-        await self.fetch_diamond_record()
-        await self.fetch_pay_record()
-        await self.fetch_gift_record()
+        try:
+            await self.fetch_osr(force)
+            await self.fetch_diamond_record()
+            await self.fetch_pay_record()
+            await self.fetch_gift_record()
+        except ValueError as e:
+            print(f'ERROR::{e}')
 
     async def fetch_osr(self, force: bool = False) -> None:
         last_time: int = 0
