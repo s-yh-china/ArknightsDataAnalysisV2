@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from api.statistics import LuckyRankInfo, PoolLuckyRankInfo
-from api.statistics import get_lucky_rank_info, get_pool_lucky_rank_info
+from api.statistics import LuckyRankInfo, PoolLuckyRankInfo, UPRankInfo
+from api.statistics import get_lucky_rank_info, get_pool_lucky_rank_info, get_six_up_rank_info
 from api.users import UserInDB, get_current_active_user
 from api.utils import JustMsgModel
 
@@ -25,4 +25,12 @@ async def pool_lucky_rank(current_user: UserInDB = Depends(get_current_active_us
     info: LuckyRankInfo = await get_pool_lucky_rank_info(current_user)
     if info is None:
         return JustMsgModel(code=404, msg="No pool lucky rank info available")
+    return info
+
+
+@router.get("/six_up_rank", response_model=UPRankInfo | JustMsgModel)
+async def six_up_rank(current_user: UserInDB = Depends(get_current_active_user)):
+    info: UPRankInfo = await get_six_up_rank_info(current_user)
+    if info is None:
+        return JustMsgModel(code=404, msg="No six up rank info available")
     return info

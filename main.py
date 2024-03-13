@@ -51,5 +51,6 @@ async def update_all_accounts_data():
 @app.on_event("startup")
 async def startup_event():
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(update_all_accounts_data, 'cron', config['analysis']['update_time'])
+    minute, hour, day, month, day_of_week = config['analysis']['update_time'].split()
+    scheduler.add_job(update_all_accounts_data, 'cron', hour=hour, minute=minute, day=day, month=month, day_of_week=day_of_week)
     scheduler.start()
