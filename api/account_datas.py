@@ -4,7 +4,7 @@ from datetime import datetime
 from collections import defaultdict
 
 from .models import database_manager
-from .models import Account, OperatorSearchRecord, OSRPool, OSROperator, Platform, PayRecord
+from .models import Account, OperatorSearchRecord, OSRPool, OSROperator, Platform, PayRecord, DiamondRecord
 from .accounts import AccountInDB
 
 
@@ -68,6 +68,27 @@ class PayRecordInfo(BaseModel):
     pay_info: list[PayInfo]
 
 
+class DiamondTotalInfo(BaseModel):
+    platform: Platform
+    number: int
+
+
+class DiamondTypeInfo(BaseModel):
+    type: str
+    number: int
+
+
+class DiamondInfo(BaseModel):
+    now: dict[Platform, DiamondTotalInfo]
+    total_use: dict[Platform, DiamondTotalInfo]
+    total_get: dict[Platform, DiamondTotalInfo]
+    type_use: list[DiamondTypeInfo]
+    type_get: list[DiamondTypeInfo]
+    day: dict[str, int]
+    time: AccountDataTime
+
+
+# noinspection all
 async def get_osr_info(account: AccountInDB) -> OSRInfo:
     db_account: Account = await account.get_db()
 
@@ -246,3 +267,61 @@ async def get_pay_record_info(account: AccountInDB) -> PayRecordInfo:
         total_money += pay_record.amount / 100
 
     return PayRecordInfo(total_money=total_money, pay_info=pay_info)
+
+
+async def get_diamond_info(account: AccountInDB) -> DiamondInfo:
+    db_account = await account.get_db()
+
+    info = {
+        'now': {
+            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
+            Platform.IOS: {'platform': Platform.IOS, 'number': -1}
+        },
+        'total_use': {
+            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
+            Platform.IOS: {'platform': Platform.IOS, 'number': -1}
+        },
+        'total_get': {
+            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
+            Platform.IOS: {'platform': Platform.IOS, 'number': -1}
+        },
+        'type_use': defaultdict(lambda: {'type': '', 'number': 0}),
+        'type_get': defaultdict(lambda: {'type': '', 'number': 0}),
+        'day': defaultdict(int),
+    }
+
+    records = await database_manager.execute(DiamondRecord.select().where(DiamondRecord.account == db_account).order_by(DiamondRecord.operate_time.desc()))
+
+    record: DiamondRecord
+    for record in records:
+        if info['now'][record.platform]['number'] == -1:
+            info['now'][record.platform]['number'] = record.after
+
+        change = record.after - record.before
+
+        if change > 0:
+            if info['total_get'][record.platform]['number'] == -1:
+                info['total_get'][record.platform]['number'] = 0
+
+            info['total_get'][record.platform]['number'] += change
+            info['type_get'][record.operation]['number'] += change
+            info['type_get'][record.operation]['type'] = record.operation
+        else:
+            if info['total_use'][record.platform]['number'] == -1:
+                info['total_use'][record.platform]['number'] = 0
+
+            info['total_use'][record.platform]['number'] += -change
+            info['type_use'][record.operation]['number'] += -change
+            info['type_use'][record.operation]['type'] = record.operation
+
+        info['day'][datetime.fromtimestamp(record.operate_time).strftime('%Y-%m-%d')] += change
+
+    info['time'] = {
+        'start_time': datetime.fromtimestamp(records[0].operate_time) if records else datetime.fromtimestamp(0),
+        'end_time': datetime.fromtimestamp(records[-1].operate_time) if records else datetime.fromtimestamp(0)
+    }
+
+    info['type_get'] = list(sorted(info['type_get'].values(), key=lambda x: x['number'], reverse=True))
+    info['type_use'] = list(sorted(info['type_use'].values(), key=lambda x: x['number'], reverse=True))
+
+    return DiamondInfo(**info)
