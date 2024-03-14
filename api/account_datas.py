@@ -310,8 +310,8 @@ async def get_diamond_info(account: AccountInDB) -> DiamondInfo:
             if info['total_use'][record.platform]['number'] == -1:
                 info['total_use'][record.platform]['number'] = 0
 
-            info['total_use'][record.platform]['number'] += -change
-            info['type_use'][record.operation]['number'] += -change
+            info['total_use'][record.platform]['number'] -= change
+            info['type_use'][record.operation]['number'] -= change
             info['type_use'][record.operation]['type'] = record.operation
 
         info['day'][datetime.fromtimestamp(record.operate_time).strftime('%Y-%m-%d')] += change

@@ -29,8 +29,8 @@ https://github.com/s-yh-china/ArknightsDataAnalysisV2
         - [x] 基本统计
         - [x] 收入支出总览
     - [x] 氪金
-- [ ] 数据统计
-    - [ ] 全站数据统计
+- [x] 数据统计
+    - [x] 全站数据统计
     - [x] 欧非总榜
     - [x] 当期欧非榜
     - [x] 歪卡榜

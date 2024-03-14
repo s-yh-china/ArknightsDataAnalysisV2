@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from api.statistics import LuckyRankInfo, PoolLuckyRankInfo, UPRankInfo
-from api.statistics import get_lucky_rank_info, get_pool_lucky_rank_info, get_six_up_rank_info
+from api.statistics import LuckyRankInfo, PoolLuckyRankInfo, UPRankInfo, SiteStatisticsInfo
+from api.statistics import get_lucky_rank_info, get_pool_lucky_rank_info, get_six_up_rank_info, get_site_statistics_info
 from api.users import UserInDB, get_current_active_user
 from api.utils import JustMsgModel
 
@@ -34,3 +34,8 @@ async def six_up_rank(current_user: UserInDB = Depends(get_current_active_user))
     if info is None:
         return JustMsgModel(code=404, msg="No six up rank info available")
     return info
+
+
+@router.get("/site_statistics", response_model=SiteStatisticsInfo, dependencies=[Depends(get_current_active_user)])
+async def site_statistics():
+    return await get_site_statistics_info()

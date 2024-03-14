@@ -49,12 +49,12 @@ class ArknightsDataAnalysis:
             record: OperatorSearchRecord = await database_manager.get_or_none(OperatorSearchRecord.select(OperatorSearchRecord.account == self.account).where().order_by(OperatorSearchRecord.time.desc()).first())
             last_time = record.time
 
-        ors_datas: list = await self.request.get_cards_record(last_time)
+        osr_datas: list = await self.request.get_cards_record(last_time)
         update_pool: list = []
 
         async with database_manager.transaction():
             item: dict
-            for item in ors_datas:
+            for item in osr_datas:
                 time: int = item['ts']
                 pool_name: str = item['pool']
                 chars: list = item['chars']
@@ -93,10 +93,10 @@ class ArknightsDataAnalysis:
         if pool.is_auto or not pool.is_up_pool:
             return
         async with database_manager.transaction():
-            ors: OperatorSearchRecord
-            for ors in await database_manager.execute(OperatorSearchRecord.select().where(OperatorSearchRecord.pool == pool)):
+            osr: OperatorSearchRecord
+            for osr in await database_manager.execute(OperatorSearchRecord.select().where(OperatorSearchRecord.pool == pool)):
                 char_item: OSROperator
-                for char_item in await database_manager.execute(OSROperator.select().where(OSROperator.record == ors).where(OSROperator.is_up.is_null(True))):
+                for char_item in await database_manager.execute(OSROperator.select().where(OSROperator.record == osr).where(OSROperator.is_up.is_null(True))):
                     is_up: bool = char_item.name in pool.up_operators
                     char_item.is_up = is_up
                     await database_manager.update(char_item)
