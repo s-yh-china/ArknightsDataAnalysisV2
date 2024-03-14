@@ -10,6 +10,7 @@ from peewee_async import Manager, AioModel
 from peewee_async import PooledMySQLDatabase as AsyncPooledMySQLDatabase
 
 from .datas import ConfigData
+from .pydantic_models import UserConfig
 
 database_proxy: DatabaseProxy = DatabaseProxy()
 database_manager = Manager(database_proxy)
@@ -41,6 +42,11 @@ class CJSONField(JSONField):
         super().__init__(json_dumps=dump, **kwargs)
 
 
+class UserConfigField(CJSONField):
+    def python_value(self, value: Any) -> UserConfig:
+        return UserConfig.model_validate_json(super().python_value(value))
+
+
 class OnlyTimestampField(TimestampField):
     def python_value(self, value: Any) -> int:
         return value
@@ -51,7 +57,7 @@ class DBUser(BaseModel):
     email = CharField(max_length=30, unique=True)
     hashed_password = CharField(max_length=60)
     slat = CharField(max_length=32)
-    user_config = CJSONField()
+    user_config = UserConfigField()
     disabled = BooleanField(default=False)
 
 

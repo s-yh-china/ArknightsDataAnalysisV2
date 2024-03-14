@@ -76,7 +76,7 @@ def get_confined_account_name(user: UserInDB, account: Account) -> str:
         return f'{account.nickname} (Owner)'
 
     username: str
-    user_config: UserConfig = UserConfig.model_validate_json(account.owner.user_config)
+    user_config: UserConfig = account.owner.user_config
     match user_config.name_display:
         case UsernameDisplayStatus.FULL:
             username = account.nickname
@@ -99,8 +99,7 @@ async def compute_lucky_rank() -> dict | None:
 
     user: DBUser
     for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
-        if user_config.is_lucky_rank:
+        if user.user_config.is_lucky_rank:
             enable_users.append(user)
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
@@ -153,8 +152,7 @@ async def compute_pool_lucky_rank() -> dict | None:
 
     user: DBUser
     for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
-        if user_config.is_lucky_rank:
+        if user.user_config.is_lucky_rank:
             enable_users.append(user)
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
@@ -206,14 +204,14 @@ async def get_pool_lucky_rank_info(user: UserInDB) -> PoolLuckyRankInfo | None:
     return PoolLuckyRankInfo(**info)
 
 
+# noinspection all
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'six_up_rank_info')
 async def compute_six_up_rank() -> dict | None:
     enable_users: list[DBUser] = []
 
     user: DBUser
     for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
-        if user_config.is_lucky_rank:
+        if user.user_config.is_lucky_rank:
             enable_users.append(user)
 
     osr_up = defaultdict(lambda: {'six': 0, 'not_up': 0, 'account': None, 'avg': 0.0})
@@ -265,14 +263,14 @@ async def get_six_up_rank_info(user: UserInDB) -> UPRankInfo | None:
     return UPRankInfo(**info)
 
 
+# noinspection all
 @cached_with_refresh(ttl=7200, key_builder=lambda: 'site_statistics')
 async def compute_site_statistics() -> dict:
     enable_users: list[DBUser] = []
 
     user: DBUser
     for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
-        if user_config.is_statistics:
+        if user.user_config.is_statistics:
             enable_users.append(user)
 
     accounts = [account for account in await database_manager.execute(Account.select().where(Account.owner.in_(enable_users)))]

@@ -1,5 +1,4 @@
 import os
-from enum import Enum
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -10,6 +9,7 @@ from pydantic import BaseModel
 
 from .models import DBUser
 from .models import database_manager
+from .pydantic_models import UserConfig, UsernameDisplayStatus  # noqa
 from .utils import decode_jwt
 
 
@@ -29,24 +29,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-
-
-class UsernameDisplayStatus(Enum):
-    FULL = 'FULL'
-    HIDE_MID = 'HIDE_MID'
-    HIDE_ALL = 'HIDE_ALL'
-
-
-class UserConfig(BaseModel):
-    nickname: str = '未设置'
-    private_qq: int = 0
-
-    is_statistics: bool = True
-    is_lucky_rank: bool = False
-    is_auto_gift: bool = False
-
-    name_display: UsernameDisplayStatus = UsernameDisplayStatus.HIDE_ALL
-    nickname_display: bool = False
 
 
 class UserInfo(UserBase):
@@ -76,15 +58,13 @@ def verify_password(plain_password: str, slat: str, hashed_password: str) -> boo
 async def get_user(username: str) -> UserInDB | None:
     user: DBUser = await database_manager.get_or_none(DBUser, username=username)
     if user:
-        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
-        return UserInDB.model_validate({**user.__data__, "user_config": user_config})
+        return UserInDB(**user.__data__)
 
 
 async def get_user_email(email: str) -> UserInDB | None:
     user: DBUser = await database_manager.get_or_none(DBUser, email=email)
     if user:
-        user_config: UserConfig = UserConfig.model_validate_json(user.user_config)
-        return UserInDB.model_validate({**user.__data__, "user_config": user_config})
+        return UserInDB(**user.__data__)
 
 
 async def authenticate_user(username: str, password: str) -> UserInfo | bool:
