@@ -6,6 +6,19 @@ https://github.com/s-yh-china/ArknightsDataAnalysisV2
 
 后端部分
 
+## 相关仓库
+
+<table>
+<tr>
+  <td><a href="https://github.com/s-yh-china/ArknightsDataAnalysisV2">ArknightsDataAnalysisV2</a></td>
+  <td>后端实现（当前）</td>
+</tr>
+<tr>
+  <td><a href="https://github.com/MC-XiaoHei">?</a></td>
+  <td>前端实现</td>
+</tr>
+</table>
+
 ## 当前功能
 
 - [x] 数据定时刷新
@@ -36,7 +49,7 @@ https://github.com/s-yh-china/ArknightsDataAnalysisV2
     - [x] 歪卡榜
 - [x] 安全
     - [x] 验证码
-- [ ] 礼包
-    - [ ] 自动礼包领取
+- [x] 礼包
+    - [x] 自动礼包领取
 
 使用了 [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) 字体

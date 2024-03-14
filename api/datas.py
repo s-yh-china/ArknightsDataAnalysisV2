@@ -28,8 +28,7 @@ class JsonData:
 class AnalysisData(JsonData):
     data: dict = {
         'gift_codes': {
-            'OFFICIAL': ['2023SPECIALCANDY', '00SUMMERCARNIVAL', '02023CELEBRATION', '2024ARKNIGHTSCNY',
-                         '0JIACHENLONGNIAN']
+            'OFFICIAL': []
         },
         'pool': {
             '常驻标准寻访': {
@@ -91,6 +90,7 @@ class ConfigData(JsonData):
         },
         'analysis': {
             'update_time': '0 4 * * *',
+            'auto_gift': '0 5 * * *'
         },
         'mysql': {
             'host': 'localhost',
