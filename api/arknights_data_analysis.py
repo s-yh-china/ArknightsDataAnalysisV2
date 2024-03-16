@@ -46,7 +46,7 @@ class ArknightsDataAnalysis:
         last_time: int = 0
 
         if not force and await database_manager.count(OperatorSearchRecord.select().where(OperatorSearchRecord.account == self.account)):
-            record: OperatorSearchRecord = await database_manager.get_or_none(OperatorSearchRecord.select(OperatorSearchRecord.account == self.account).where().order_by(OperatorSearchRecord.time.desc()).first())
+            record: OperatorSearchRecord = await database_manager.get_or_none(OperatorSearchRecord.select(OperatorSearchRecord.account == self.account).order_by(OperatorSearchRecord.time.desc()).first())
             last_time = record.time
 
         osr_datas: list = await self.request.get_cards_record(last_time)
