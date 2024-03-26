@@ -157,7 +157,7 @@ async def compute_pool_lucky_rank() -> dict | None:
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
 
-    pool, _ = await get_or_create_osr_pool(pool_progress[-1])
+    pool, _ = await get_or_create_osr_pool(pool_progress['pool'])
     if pool is None:
         return None
 
