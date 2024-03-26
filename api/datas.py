@@ -26,38 +26,8 @@ class JsonData:
 
 
 class AnalysisData(JsonData):
-    data: dict = {
-        'gift_codes': {
-            'OFFICIAL': []
-        },
-        'pool': {
-            '常驻标准寻访': {
-                'type': '标准寻访',
-                'is_up_pool': False
-            },
-            '中坚寻访': {
-                'type': '中坚寻访',
-                'is_up_pool': False
-            },
-            '未知寻访': {
-                'type': '未知寻访',
-                'is_up_pool': False
-            },
-            '一线微明': {
-                'type': '标准寻访',
-                'is_up_pool': True,
-                'up_operators': ['莱伊']
-            },
-            '千秋一粟': {
-                'type': '千秋一粟',
-                'is_up_pool': True,
-                'up_operators': ['黍', '左乐']
-            }
-        },
-        'pool_progress': [
-            '常驻标准寻访', '中坚寻访', '千秋一粟'
-        ]
-    }
+    def update_data(self) -> None:
+        pass
 
     def __init__(self):
         super().__init__('data/analysis.json')
