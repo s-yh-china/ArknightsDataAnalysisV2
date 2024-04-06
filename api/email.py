@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from pydantic import BaseModel
 
 from .models import DBUser, database_manager
-from .users import get_user_email, UserInDB, get_password_hash
+from .users import get_user_email, UserInDB, get_password_hash, get_random_slat
 from .utils import decode_jwt, create_jwt, JustMsgModel
 from .datas import ConfigData
 
@@ -84,8 +84,8 @@ async def email_verify(verify_token: str) -> EmailVerifyInfo:
                 db_user.disabled = False
                 await database_manager.update(db_user)
             case "change_password":
-                new_password: str = payload.get("new_password")
-                db_user.hashed_password = get_password_hash(new_password, db_user.slat)
+                db_user.hashed_password = payload.get("new_hashed_password")
+                db_user.slat = payload.get("new_slat")
                 await database_manager.update(db_user)
             case _:
                 raise credentials_exception
@@ -117,8 +117,11 @@ async def create_email_verify(email: str, type: str, ex_data: dict = None) -> st
             db_user.disabled = True
             await database_manager.update(db_user)
         case "change_password":
+            new_slat: str = get_random_slat()
+            new_hashed_password: str = get_password_hash(ex_data.get('new_password'), new_slat)
             data.update({
-                'new_password': ex_data.get('new_password')
+                'new_hashed_password': new_hashed_password,
+                'new_slat': new_slat
             })
         case _:
             raise HTTPException(

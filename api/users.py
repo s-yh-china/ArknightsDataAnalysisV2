@@ -108,8 +108,12 @@ def get_password_hash(password: str, slat: str) -> str:
     return password_context.hash(password + slat)
 
 
+def get_random_slat() -> str:
+    return os.urandom(16).hex()
+
+
 async def create_user(username: str, password: str, email: str) -> UserInfo:
-    slat: str = os.urandom(16).hex()
+    slat: str = get_random_slat()
     password = get_password_hash(password, slat)
     await database_manager.create(DBUser, username=username, hashed_password=password, email=email, slat=slat, user_config=UserConfig().model_dump_json())
     return await get_user(username)
