@@ -14,7 +14,7 @@ https://github.com/s-yh-china/ArknightsDataAnalysisV2
   <td>后端实现（当前）</td>
 </tr>
 <tr>
-  <td><a href="https://github.com/MC-XiaoHei">?</a></td>
+  <td><a href="https://github.com/MC-XiaoHei/ArknightsDataAnalysisV2-UI">ArknightsDataAnalysisV2-UI</a></td>
   <td>前端实现</td>
 </tr>
 </table>
