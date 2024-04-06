@@ -7,11 +7,15 @@ from api.datas import AnalysisData
 
 
 async def update_all_accounts_data():
+    print('update_all_accounts_data start')
+    account_n = 0
     account: Account
     for account in await database_manager.execute(Account.select().where(Account.available == True)):
         analysis: ArknightsDataAnalysis = await ArknightsDataAnalysis.get_analysis(account)
         if analysis:
+            account_n += 1
             await analysis.fetch_data()
+    print(f'update_all_accounts_data end, update {account_n} accounts')
 
 
 gift_data: list[str] = AnalysisData().get_data()['gift_codes']['OFFICIAL']
