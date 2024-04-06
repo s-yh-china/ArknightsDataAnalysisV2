@@ -1,4 +1,5 @@
 # 这是一个特殊的文件 为了避免循环引用模型
+# 以及一些独立的模型
 from enum import Enum
 
 from pydantic import BaseModel
@@ -20,3 +21,19 @@ class UserConfig(BaseModel):
 
     name_display: UsernameDisplayStatus = UsernameDisplayStatus.HIDE_ALL
     nickname_display: bool = False
+
+
+class PoolProgress(BaseModel):
+    pool: str
+    end_time: str
+
+
+class PoolInfo(BaseModel):
+    name: str
+    type: str
+    is_auto: bool
+    is_up_pool: bool | None
+    up_operators: list[str] | None
+
+    class Config:
+        from_attributes = True

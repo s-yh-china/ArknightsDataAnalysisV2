@@ -1,4 +1,4 @@
-from backapi import users, captcha, accounts, account_datas, statistics, email
+from backapi import users, captcha, accounts, account_datas, statistics, email, utils
 from api.datas import ConfigData
 from api.auto_data_update import update_all_accounts_data, auto_get_gift
 
@@ -17,10 +17,11 @@ app.include_router(accounts.router)
 app.include_router(account_datas.router)
 app.include_router(statistics.router)
 app.include_router(email.router)
+app.include_router(utils.router)
 
 if config['safe']['DEBUG']:
     app.add_middleware(
-        CORSMiddleware,
+        CORSMiddleware,  # type: ignore
         allow_origins=['*'],
         allow_credentials=True,
         allow_methods=['*'],
@@ -29,7 +30,7 @@ if config['safe']['DEBUG']:
     app.mount("/test", StaticFiles(directory="test"), name="test")
 else:
     app.add_middleware(
-        CORSMiddleware,
+        CORSMiddleware,  # type: ignore
         **config['safe']['CORS']
     )
 
@@ -39,9 +40,11 @@ async def root():
     return {"message": "这里应该放一个系统可用性表"}
 
 
+scheduler = AsyncIOScheduler()
+
+
 @app.on_event("startup")
 async def startup_event():
-    scheduler = AsyncIOScheduler()
     minute, hour, day, month, day_of_week = config['analysis']['update_time'].split()
     scheduler.add_job(update_all_accounts_data, 'cron', hour=hour, minute=minute, day=day, month=month, day_of_week=day_of_week)
     minute, hour, day, month, day_of_week = config['analysis']['auto_gift'].split()
