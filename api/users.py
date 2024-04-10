@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from .models import DBUser
 from .models import database_manager
-from .pydantic_models import UserConfig, UsernameDisplayStatus  # noqa
+from .pydantic_models import UserConfig
 from .utils import decode_jwt
 
 

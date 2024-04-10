@@ -6,7 +6,7 @@ from peewee import DatabaseProxy, CharField, BooleanField, ForeignKeyField, Inte
 from playhouse.mysql_ext import JSONField
 from playhouse.shortcuts import ReconnectMixin
 
-from peewee_async import Manager, AioModel
+from peewee_async import Manager, AioModel  # noqa
 from peewee_async import PooledMySQLDatabase as AsyncPooledMySQLDatabase
 
 from .datas import ConfigData

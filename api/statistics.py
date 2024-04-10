@@ -6,7 +6,8 @@ from .account_datas import DiamondTotalInfo, DiamondTypeInfo
 from .arknights_data_analysis import get_or_create_osr_pool
 from .cache import cached_with_refresh
 from .datas import AnalysisData
-from .users import UserInDB, UserConfig, UsernameDisplayStatus
+from .users import UserInDB, UserConfig
+from .pydantic_models import UsernameDisplayStatus
 from .models import Account, DBUser, database_manager, OperatorSearchRecord, OSROperator, OSRPool, PayRecord, Platform, DiamondRecord
 from .utils import f_hide_mid
 
