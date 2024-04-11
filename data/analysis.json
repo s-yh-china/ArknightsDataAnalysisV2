@@ -191,10 +191,17 @@
             "up_operators": [
                 "灰烬"
             ]
+        },
+        "如死亦终": {
+            "type": "标准寻访",
+            "is_up_pool": true,
+            "up_operators": [
+                "阿斯卡纶"
+            ]
         }
     },
     "pool_progress": {
-        "pool": "进攻-防守-战术交汇",
-        "end_time": "2024-04-04T03:59:59.000Z"
+        "pool": "如死亦终",
+        "end_time": "2024-04-025T03:59:59.000"
     }
 }
