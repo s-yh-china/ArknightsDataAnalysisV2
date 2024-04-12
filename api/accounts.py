@@ -112,4 +112,10 @@ async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefres
     else:
         analysis = await ArknightsDataAnalysis.get_analysis(db_account)
 
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account Token Invalid, Need Refresh Token"
+        )
+
     task = asyncio.create_task(analysis.fetch_data(refresh_info.force))
