@@ -35,7 +35,7 @@ async def account_info(account: AccountInfo = Depends(get_account_by_uid)):
     return account
 
 
-@router.post("/delete", response_model=JustMsgModel, status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(valid_captcha_code)])
+@router.post("/delete", response_model=JustMsgModel, dependencies=[Depends(valid_captcha_code)])
 async def delete_account(account: AccountInDB = Depends(get_account_by_uid)):
     await del_account_by_uid(account)
     return JustMsgModel()

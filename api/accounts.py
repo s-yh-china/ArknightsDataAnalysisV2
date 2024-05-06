@@ -91,11 +91,18 @@ async def get_account_by_uid(account: AccountBase, user: UserBase = Depends(get_
     return AccountInDB(**db_account.__data__)
 
 
-async def del_account_by_uid(account: AccountInDB):  # TODO 还没做
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Not Accepted"
-    )
+async def del_account_by_uid(account: AccountInDB):
+    db_account: Account = await account.get_db()
+    if db_account.owner:
+        db_account.owner = None
+        db_account.token = ''
+        db_account.available = False
+        await database_manager.update(db_account)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not Accepted"
+        )
 
 
 async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefresh):
