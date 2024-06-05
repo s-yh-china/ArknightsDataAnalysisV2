@@ -205,5 +205,5 @@ class ArknightsDataAnalysis:
         analyses: ArknightsDataAnalysis = (await cls.get_or_create_analysis(account.token, account.channel))[0]
         if not analyses:
             account.available = False
-            await database_manager.update(analyses)
+            await database_manager.update(account)
         return analyses
