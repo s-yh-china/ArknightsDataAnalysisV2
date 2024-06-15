@@ -1,4 +1,6 @@
 import secrets
+from typing import cast, TypeVar
+
 import aiohttp
 
 from datetime import timedelta, timezone, datetime
@@ -19,26 +21,31 @@ class JustMsgModel(BaseModel):
 
 
 class AsyncRequest:
+    def __init__(self):
+        self._session: aiohttp.ClientSession
+
     async def __aenter__(self) -> 'AsyncRequest':
-        self.session = aiohttp.ClientSession()
+        self._session = aiohttp.ClientSession()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        await self.session.close()
+        await self._session.close()
 
-    async def get(self, url: str, json_response: bool = True) -> bytes | str:
-        async with self.session.get(url) as response:
-            if response.status == 200:
-                return await response.read() if not json_response else await response.json()
-        return 'ERROR'
+    async def get(self, url: str) -> dict[str, object]:
+        async with self._session.get(url) as response:
+            if response.status % 100 == 2:
+                return cast(dict[str, object], await response.json())
+            else:
+                raise ValueError(f'Response {url} status code is {response.status}')
 
-    async def post_json(self, url: str, json: dict, json_response: bool = True) -> bytes | str:
-        async with self.session.post(url, json=json) as response:
-            if response.status == 200:
-                return await response.read() if not json_response else await response.json()
-        return 'ERROR'
+    async def post_json(self, url: str, json_data: dict[str, object]) -> dict[str, object]:
+        async with self._session.post(url, json=json_data) as response:
+            if response.status % 100 == 2:
+                return cast(dict[str, object], await response.json())
+            else:
+                raise ValueError(f'Response {url} status code is {response.status}')
 
-    async def post_json_with_csrf(self, url: str, json: dict, json_response: bool = True) -> bytes | str:
+    async def post_json_with_csrf(self, url: str, json_data: dict[str, object]) -> dict[str, object]:
         token = secrets.token_urlsafe(24)
         headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
@@ -46,10 +53,17 @@ class AsyncRequest:
             'cookie': f'csrf_token={token}',
             'content-type': 'application/json;charset=UTF-8'
         }
-        async with self.session.post(url, json=json, headers=headers) as response:
-            if response.status == 200:
-                return await response.read() if not json_response else await response.json()
-        return 'ERROR'
+        async with self._session.post(url, json=json_data, headers=headers) as response:
+            if response.status % 100 == 2:
+                return cast(dict[str, object], await response.json())
+            else:
+                raise ValueError(f'Response {url} status code is {response.status}')
+
+    T = TypeVar("T")
+
+    @staticmethod
+    def get_response(__type: type[T], response: dict[str, object]) -> T:
+        return cast(__type, response.get('data'))
 
 
 def f_hide_mid(info: str, count: int = 4, fix: str = '*') -> str:
@@ -74,10 +88,11 @@ def f_hide_mid(info: str, count: int = 4, fix: str = '*') -> str:
     mid_pos: int = str_len // 2
     offset: int = count // 2
 
+    ret_str: str
     if count % 2 == 0:
-        ret_str: str = info[:mid_pos - offset] + count * fix + info[mid_pos + offset:]
+        ret_str = info[:mid_pos - offset] + count * fix + info[mid_pos + offset:]
     else:
-        ret_str: str = info[:mid_pos - offset] + count * fix + info[mid_pos + offset + 1:]
+        ret_str = info[:mid_pos - offset] + count * fix + info[mid_pos + offset + 1:]
 
     return ret_str
 

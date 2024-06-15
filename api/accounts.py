@@ -52,7 +52,7 @@ async def get_account_by_token(account_create: AccountCreate) -> AccountInDB:
     analysis, created = await ArknightsDataAnalysis.get_or_create_analysis(account_create.token, account_create.channel)
     if analysis:
         if created:
-            task = asyncio.create_task(analysis.fetch_data(True))
+            _ = asyncio.create_task(analysis.fetch_data(True))
         return AccountInDB(**analysis.account.__data__)
     else:
         raise HTTPException(
@@ -125,4 +125,4 @@ async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefres
             detail="Account Token Invalid, Need Refresh Token"
         )
 
-    task = asyncio.create_task(analysis.fetch_data(refresh_info.force))
+    _ = asyncio.create_task(analysis.fetch_data(refresh_info.force))

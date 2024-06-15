@@ -14,7 +14,7 @@ def cached_with_refresh(ttl, key_builder):
 
             if result is not None:
                 if time.time() > expiry_time:
-                    task = asyncio.create_task(cache.set(key, (await func(*args, **kwargs), time.time() + ttl)))
+                    _ = asyncio.create_task(cache.set(key, (await func(*args, **kwargs), time.time() + ttl)))
             else:
                 result = await func(*args, **kwargs)
                 await cache.set(key, (result, time.time() + ttl))

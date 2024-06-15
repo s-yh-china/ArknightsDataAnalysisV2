@@ -93,7 +93,7 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
     db_account: Account = await account.get_db()
 
     osr_not_up = {'total': 0}
-    osr_six = defaultdict(int)
+    osr_six = defaultdict[str, int](int)
 
     osr_number = defaultdict(int)
     osr_number['total'] = {'all': 0, '3': 0, '4': 0, '5': 0, '6': 0}

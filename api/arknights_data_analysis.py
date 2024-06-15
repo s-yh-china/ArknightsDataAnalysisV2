@@ -86,7 +86,7 @@ class ArknightsDataAnalysis:
                         await database_manager.create(OSROperator, name=name, rarity=rarity, is_new=is_new, index=index, record=osr, is_up=is_up)
         if len(update_pool) > 0:
             for pool in update_pool:
-                task = asyncio.create_task(self.refresh_pool(pool))
+                _ = asyncio.create_task(self.refresh_pool(pool))
 
     @staticmethod
     async def refresh_pool(pool: OSRPool) -> None:

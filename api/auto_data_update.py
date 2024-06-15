@@ -11,8 +11,7 @@ async def update_all_accounts_data():
     account_n = 0
     account: Account
     for account in await database_manager.execute(Account.select().where(Account.available == True)):
-        analysis: ArknightsDataAnalysis = await ArknightsDataAnalysis.get_analysis(account)
-        if analysis:
+        if analysis := await ArknightsDataAnalysis.get_analysis(account):
             account_n += 1
             await analysis.fetch_data()
     print(f'update_all_accounts_data end, update {account_n} accounts')
