@@ -9,8 +9,8 @@ from playhouse.shortcuts import ReconnectMixin
 from peewee_async import Manager, AioModel  # noqa
 from peewee_async import PooledMySQLDatabase as AsyncPooledMySQLDatabase
 
-from .datas import ConfigData
-from .pydantic_models import UserConfig
+from api.datas import ConfigData
+from api.pydantic_models import UserConfig
 
 database_proxy: DatabaseProxy = DatabaseProxy()
 database_manager = Manager(database_proxy)
@@ -81,17 +81,10 @@ class Account(BaseModel):
     available = BooleanField()
 
 
-class OSRPool(BaseModel):
-    name = CharField(max_length=20, unique=True)
-    type = CharField()
-    is_up_pool = BooleanField(null=True)
-    up_operators = CJSONField(null=True)
-    is_auto = BooleanField()
-
-
 class OperatorSearchRecord(BaseModel):
     account = ForeignKeyField(Account, backref='card_records')
-    pool = ForeignKeyField(OSRPool, backref='records')
+    real_pool = CharField(null=True)
+    pool_id = CharField(null=True)
     time = OnlyTimestampField()
 
 
@@ -158,7 +151,7 @@ class ReconnectAsyncPooledMySQLDatabase(ReconnectMixin, AsyncPooledMySQLDatabase
         return cls._instance
 
 
-database_config: dict = ConfigData().get_data()['mysql']
+database_config: dict = ConfigData.get_mysql()
 
 database_proxy.initialize(ReconnectAsyncPooledMySQLDatabase.get_db_instance(**database_config))
-database_proxy.create_tables([DBUser, Account, OSRPool, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord, GiftRecord])
+database_proxy.create_tables([DBUser, Account, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord, GiftRecord])

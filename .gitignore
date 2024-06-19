@@ -138,3 +138,4 @@ cache
 # Fleet
 .fleet
 .idea
+data/pool_info.json

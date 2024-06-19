@@ -1,5 +1,8 @@
 import os
 import json
+import httpx
+
+from intervaltree import IntervalTree
 
 
 class JsonData:
@@ -9,32 +12,111 @@ class JsonData:
         self.data_file: str = data_file
         if not os.path.exists(self.data_file):
             self.update_data()
+            self.load_data()
         else:
             self.load_data()
 
     def load_data(self) -> dict:
         with open(self.data_file, 'r', encoding='utf-8') as json_file:
-            self.data = json.load(json_file)
-        return self.data
+            type(self).data = json.load(json_file)
+        return type(self).data
 
     def update_data(self) -> None:
         with open(self.data_file, 'w', encoding='utf-8') as json_file:
-            json.dump(self.data, json_file, indent=4, ensure_ascii=False)
+            json.dump(type(self).data, json_file, indent=4, ensure_ascii=False)
 
-    def get_data(self) -> dict:
-        return self.data
+    @classmethod
+    def get_data(cls) -> dict:
+        return cls.data
 
 
-class AnalysisData(JsonData):
-    def update_data(self) -> None:
-        pass
+class PoolInfo(JsonData):
+    __time_tree: IntervalTree
+    pool_name_to_id: dict[str, list[str]]
 
     def __init__(self):
-        super().__init__('data/analysis.json')
+        super().__init__('data/pool_info.json')
+
+    def load_data(self) -> dict:
+        super().load_data()
+        self.__time_tree = IntervalTree()
+        self.pool_name_to_id = {}
+        for pool in self.data['pool'].values():
+            self.__time_tree[pool['start']:pool['end'] + 1] = pool
+            if pool['real_name'] not in self.pool_name_to_id:
+                self.pool_name_to_id[pool['real_name']] = []
+            self.pool_name_to_id[pool['real_name']].append(pool['id'])
+        return self.data
+
+    def update_data(self) -> None:
+        try:
+            type(self).data = httpx.get('').json()  # TODO 加上网址
+        except Exception as e:
+            print(f'Update PoolInfo Error: {e}')
+        super().update_data()
+
+    @classmethod
+    def get_pool_info(cls, pool_id: str | None) -> dict[str, str | int | dict[str, int] | list[str]]:
+        if pool_id is not None:
+            if pool_info := cls.data['pool'].get(pool_id):
+                return pool_info
+        return {
+            "id": "UNKNOWN_0_1_1",
+            "name": "未知寻访",
+            "real_name": "未知寻访",
+            "type": "UNKNOWN",
+            "start": 0,
+            "end": 0
+        }
+
+    @classmethod
+    def get_pool_id_by_time(cls, time: int) -> list[str]:
+        pools = [interval.data for interval in cls.__time_tree[time]]
+        pools.sort(key=lambda pool: abs(pool['start'] - time))
+        return [pool['id'] for pool in pools]
+
+    @classmethod
+    def get_now_pools(cls) -> list[str]:
+        return cls.data['process']
+
+    @classmethod
+    def get_pool_id_by_info(cls, real_name: str, time: int) -> str | None:
+        if ids_by_real_name := cls.pool_name_to_id.get(real_name):
+            ids_by_time = set(cls.get_pool_id_by_time(time))
+            if intersecting_ids := ids_by_time.intersection(ids_by_real_name):
+                return next(iter(intersecting_ids))
+        return None
+
+    @staticmethod
+    def get_pool_count_type(pool_info: dict[str, str | int | dict[str, int]]) -> str:
+        match pool_info['type']:
+            case 'LIMITED' | 'LINKAGE' | 'ATTAIN' | 'CLASSIC_ATTAIN':
+                return pool_info['name']
+            case 'SINGLE' | 'NORMAL':
+                return '标准寻访'
+            case 'CLASSIC' | 'FESCLASSIC':
+                return '中坚寻访'
+
+
+class GiftCodeInfo(JsonData):
+    data: dict[str, list[str]] = {
+        "OFFICIAL": []
+    }
+
+    def __init__(self):
+        super().__init__('data/gift_code.json')
+
+    @classmethod
+    def get_gift_code(cls, server: str = 'OFFICIAL') -> list[str]:
+        return cls.data.get(server, [])
+
+    def update_data(self) -> None:
+        pass
 
 
 class ConfigData(JsonData):
     data: dict = {
+        'version': '0.1.0',
         'safe': {
             'SECRET_KEY': os.urandom(32).hex(),
             'ALGORITHM': 'HS256',
@@ -74,7 +156,29 @@ class ConfigData(JsonData):
     def __init__(self):
         super().__init__('config.json')
 
+    @classmethod
+    def get_email(cls):
+        return cls.data['email']
+
+    @classmethod
+    def get_safe(cls):
+        return cls.data['safe']
+
+    @classmethod
+    def get_mysql(cls):
+        return cls.data['mysql']
+
+    @classmethod
+    def get_user(cls):
+        return cls.data['user']
+
     def update_data(self) -> None:
         super().update_data()
         print('Need Update Config')
         exit(1)
+
+
+# init
+ConfigData()
+PoolInfo()
+GiftCodeInfo()

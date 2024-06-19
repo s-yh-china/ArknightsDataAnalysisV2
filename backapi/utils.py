@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
-from api.pydantic_models import PoolProgress, PoolInfo
+from api.pydantic_models import PoolProgress, PoolInfoModel
 from api.accounts import get_current_active_user
-from api.datas import AnalysisData
-from api.models import database_manager, OSRPool
+from api.datas import PoolInfo
 
 router = APIRouter(
     prefix="/api/utils",
@@ -11,17 +10,12 @@ router = APIRouter(
     responses={404: {"description": "Not found"}}
 )
 
-pool_data = AnalysisData().get_data()['pool_progress']
-
 
 @router.get('/pool_progress', dependencies=[Depends(get_current_active_user)], response_model=PoolProgress)
 def pool_progress():
-    return PoolProgress(**pool_data)
+    return PoolProgress.model_validate({'pools': PoolInfo.get_now_pools()})
 
 
-@router.get('/pool_info', dependencies=[Depends(get_current_active_user)], response_model=PoolInfo)
-async def pool_info(pool_name: str):
-    pool: OSRPool = await database_manager.get_or_none(OSRPool, name=pool_name)
-    if not pool:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pool not found")
-    return PoolInfo(**pool.__data__)
+@router.get('/pool_info', dependencies=[Depends(get_current_active_user)], response_model=PoolInfoModel)
+async def pool_info(pool_id: str):
+    return PoolInfoModel.model_validate(PoolInfo.get_pool_info(pool_id))

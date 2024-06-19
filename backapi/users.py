@@ -20,8 +20,6 @@ router = APIRouter(
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-config = ConfigData().get_data()['user']
-
 
 @router.post("/login_password")
 async def login_password(data: OAuth2PasswordRequestForm = Depends()) -> Token:
@@ -63,7 +61,7 @@ async def register(data: UserCreate, tasks: BackgroundTasks) -> UserInfo:
 
     user = await create_user(data.username, data.password, data.email)
 
-    if config['verify_email']:
+    if ConfigData.get_user()['verify_email']:
         token = await create_email_verify(data.email, 'verify_email')
         tasks.add_task(send_email, data.email, token)
 
@@ -83,7 +81,7 @@ async def modify_config(config: UserConfig, current_user: UserInDB = Depends(get
 
 @router.post('/password_reset', response_model=JustMsgModel, status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(valid_captcha_code)])
 async def password_reset(payload: EmailResetPassword, tasks: BackgroundTasks):
-    if not config['password_reset']:
+    if not ConfigData.get_user()['password_reset']:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password reset is not allowed",

@@ -1,8 +1,8 @@
 import asyncio
 
-from .models import Account, AccountChannel, DBUser, database_manager
-from .users import UserBase, get_current_active_user
-from .arknights_data_analysis import ArknightsDataAnalysis
+from api.models import Account, AccountChannel, DBUser, database_manager
+from api.users import UserBase, get_current_active_user
+from api.arknights_data_analysis import ArknightsDataAnalysis
 
 from fastapi import HTTPException, status, Depends
 from pydantic import BaseModel

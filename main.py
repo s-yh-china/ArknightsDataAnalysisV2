@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-config = ConfigData().get_data()
+config = ConfigData.get_data()
 
 app = FastAPI()
 

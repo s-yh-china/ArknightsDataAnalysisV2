@@ -3,9 +3,11 @@ from pydantic import BaseModel
 from datetime import datetime
 from collections import defaultdict
 
-from .models import database_manager
-from .models import Account, OperatorSearchRecord, OSRPool, OSROperator, Platform, PayRecord, DiamondRecord
-from .accounts import AccountInDB
+from api.datas import PoolInfo
+from api.models import database_manager
+from api.models import Account, OperatorSearchRecord, OSROperator, Platform, PayRecord, DiamondRecord
+from api.accounts import AccountInDB
+from api.pydantic_models import PoolInfoModel
 
 
 class AccountDataTime(BaseModel):
@@ -22,13 +24,6 @@ class OSRInfo(BaseModel):
     osr_not_up_avg: dict[str, float]
     time: AccountDataTime
 
-    class Config:
-        json_schema_extra = {
-            'examples': [
-                {'osr_lucky_avg': {'6': 37.4, '5': 11.6875, '4': 2.077777777777778, '3': 2.460526315789474}, 'osr_lucky_count': {'千秋一粟': {'3': 5, '4': 1, '5': 0, '6': 38}, '标准寻访': {'3': 5, '4': 0, '5': 4, '6': 17}}, 'osr_number_month': {'2024-02': 117, '2024-01': 70}, 'osr_number_pool': {'total': {'all': 187, '3': 76, '4': 90, '5': 16, '6': 5}, '一线微明': 70, '千秋一粟': 117}, 'osr_pool': ['千秋一粟', '一线微明'], 'osr_not_up_avg': {'total': 0.2, '一线微明': 0.5, '千秋一粟': 0.0}, 'time': {'start_time': '2024-01-18 12:36:16', 'end_time': '2024-02-07 11:59:13'}}
-            ]
-        }
-
 
 class OSROperatorInfo(BaseModel):
     time: datetime
@@ -40,20 +35,12 @@ class OSROperatorInfo(BaseModel):
 
 
 class OSRPoolInfo(BaseModel):
-    pool: str
+    pool_info: PoolInfoModel
     osr_number: dict[str, int]
     osr_lucky_avg: dict[str, float]
     osr_number_day: dict[str, int]
     osr_six_record: list[OSROperatorInfo]
     osr_five_record: list[OSROperatorInfo]
-
-    class Config:
-        json_schema_extra = {
-            'examples': [
-                {'pool': '千秋一粟', 'osr_number': {'3': 53, '4': 53, '5': 8, '6': 3, 'all': 117}, 'osr_lucky_avg': {'3': 2.207547169811321, '4': 2.207547169811321, '5': 14.625, '6': 39}, 'osr_number_day': {'2024-02-07': 1, '2024-02-06': 11, '2024-02-05': 1, '2024-02-04': 11, '2024-02-03': 1, '2024-02-02': 11, '2024-02-01': 81}, 'osr_six_record': [{'time': '2024-02-01T16:07:23', 'name': '黍', 'rarity': 6, 'count': 6, 'is_new': False, 'is_up': True}, {'time': '2024-02-01T16:07:23', 'name': '黍', 'rarity': 6, 'count': 45, 'is_new': False, 'is_up': True}, {'time': '2024-02-01T16:01:56', 'name': '黍', 'rarity': 6, 'count': 28, 'is_new': True, 'is_up': True}],
-                 'osr_five_record': [{'time': '2024-02-07T11:59:13', 'name': '灰毫', 'rarity': 5, 'count': 10, 'is_new': False, 'is_up': False}, {'time': '2024-02-06T10:39:03', 'name': '贾维', 'rarity': 5, 'count': 22, 'is_new': False, 'is_up': False}, {'time': '2024-02-02T01:25:31', 'name': '小满', 'rarity': 5, 'count': 14, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:07:00', 'name': '小满', 'rarity': 5, 'count': 20, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:03:44', 'name': '掠风', 'rarity': 5, 'count': 22, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:01:56', 'name': '小满', 'rarity': 5, 'count': 8, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:01:46', 'name': '小满', 'rarity': 5, 'count': 11, 'is_new': False, 'is_up': False}, {'time': '2024-02-01T16:01:36', 'name': '小满', 'rarity': 5, 'count': 10, 'is_new': True, 'is_up': False}]}
-            ]
-        }
 
 
 class PayInfo(BaseModel):
@@ -88,29 +75,34 @@ class DiamondInfo(BaseModel):
     time: AccountDataTime
 
 
-# noinspection all
 async def get_osr_info(account: AccountInDB) -> OSRInfo:
     db_account: Account = await account.get_db()
 
     osr_not_up = {'total': 0}
     osr_six = defaultdict[str, int](int)
 
-    osr_number = defaultdict(int)
+    osr_number = defaultdict[str, int | dict[str, int]](int)
     osr_number['total'] = {'all': 0, '3': 0, '4': 0, '5': 0, '6': 0}
 
-    osr_lucky = defaultdict(lambda: {'6': [], '5': [], '4': [], '3': [], 'count': defaultdict(int)})
-    osr_number_month = defaultdict(int)
+    osr_lucky = defaultdict(lambda: {'6': [], '5': [], '4': [], '3': [], 'count': defaultdict[str, int](int)})
+    osr_number_month = defaultdict[str, int](int)
 
-    osr_pool = []
+    osr_pool: list[str] = []
 
     records = await database_manager.execute(OperatorSearchRecord.select().where(OperatorSearchRecord.account == db_account).order_by(OperatorSearchRecord.time))
 
     record: OperatorSearchRecord
     for record in records:
-        pool: OSRPool = record.pool
-        pool_type = record.pool.type
-        pool_name = record.pool.name
+        pool_id: str = record.pool_id
+        if not pool_id:
+            continue
 
+        pool_info = PoolInfo.get_pool_info(pool_id)
+        if pool_info['type'] == 'UNKNOWN':
+            continue
+
+        pool_name: str = pool_info.get('name')
+        pool_type: str = PoolInfo.get_pool_count_type(pool_info)
         if pool_name not in osr_pool:
             osr_pool.append(pool_name)
 
@@ -132,7 +124,7 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
             osr_lucky[pool_type][rarity].append(osr_lucky[pool_type]['count'][rarity])
             osr_lucky[pool_type]['count'][rarity] = 0
 
-            if pool.is_up_pool and rarity == '6':
+            if rarity == '6' and 'up_char_info' in pool_info:
                 if pool_name not in osr_not_up:
                     osr_not_up[pool_name] = 0
 
@@ -177,11 +169,12 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
     return OSRInfo.model_validate(osr_info)
 
 
-async def get_osr_pool_info(account: AccountInDB, pool_name: str) -> OSRPoolInfo:
+async def get_osr_pool_info(account: AccountInDB, pool_id: str) -> OSRPoolInfo:
     db_account: Account = await account.get_db()
-    pool = await database_manager.get_or_none(OSRPool, name=pool_name)
 
-    if pool is None:
+    pool_info = PoolInfo.get_pool_info(pool_id)
+
+    if pool_info['type'] == 'UNKNOWN':
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Pool Not Found"
@@ -198,7 +191,7 @@ async def get_osr_pool_info(account: AccountInDB, pool_name: str) -> OSRPoolInfo
     osr_six_record = []
     osr_five_record = []
 
-    records = await database_manager.execute(OperatorSearchRecord.select().where((OperatorSearchRecord.account == db_account) & (OperatorSearchRecord.pool == pool)).order_by(OperatorSearchRecord.time))
+    records = await database_manager.execute(OperatorSearchRecord.select().where((OperatorSearchRecord.account == db_account) & (OperatorSearchRecord.pool_id == pool_id)).order_by(OperatorSearchRecord.time))
 
     record: OperatorSearchRecord
     for record in records:
@@ -242,7 +235,7 @@ async def get_osr_pool_info(account: AccountInDB, pool_name: str) -> OSRPoolInfo
             osr_lucky_avg[rarity] = 0
 
     osr_info = {
-        'pool': pool_name,
+        'pool_info': pool_info,
         'osr_number': osr_number,
         'osr_lucky_avg': osr_lucky_avg,
         'osr_number_day': dict(reversed(osr_number_day.items())),
@@ -285,8 +278,8 @@ async def get_diamond_info(account: AccountInDB) -> DiamondInfo:
             Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
             Platform.IOS: {'platform': Platform.IOS, 'number': -1}
         },
-        'type_use': defaultdict(lambda: {'type': '', 'number': 0}),
-        'type_get': defaultdict(lambda: {'type': '', 'number': 0}),
+        'type_use': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0}),
+        'type_get': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0}),
         'day': defaultdict(int),
     }
 
@@ -321,7 +314,7 @@ async def get_diamond_info(account: AccountInDB) -> DiamondInfo:
         'end_time': datetime.fromtimestamp(records[-1].operate_time) if records else datetime.fromtimestamp(0)
     }
 
-    info['type_get'] = list(sorted(info['type_get'].values(), key=lambda x: x['number'], reverse=True))
-    info['type_use'] = list(sorted(info['type_use'].values(), key=lambda x: x['number'], reverse=True))
+    info['type_get'] = list(sorted(info['type_get'].values(), key=lambda x: x['number'], reverse=True))  # noqa
+    info['type_use'] = list(sorted(info['type_use'].values(), key=lambda x: x['number'], reverse=True))  # noqa
 
-    return DiamondInfo(**info)
+    return DiamondInfo.model_validate(info)

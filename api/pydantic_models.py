@@ -24,16 +24,16 @@ class UserConfig(BaseModel):
 
 
 class PoolProgress(BaseModel):
-    pool: str
-    end_time: str
+    pools: list[str]
 
 
-class PoolInfo(BaseModel):
+class PoolInfoModel(BaseModel):
+    id: str
     name: str
+    real_name: str
     type: str
-    is_auto: bool
-    is_up_pool: bool | None
-    up_operators: list[str] | None
-
-    class Config:
-        from_attributes = True
+    start: int
+    end: int
+    up_char_info: list[str] | None
+    limited_char_info: list[str] | None
+    weight_up_char_info: dict[str, int] | None

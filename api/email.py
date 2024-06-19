@@ -7,12 +7,10 @@ from email.message import EmailMessage
 
 from pydantic import BaseModel
 
-from .models import DBUser, database_manager
-from .users import get_user_email, UserInDB, get_password_hash, get_random_slat
-from .utils import decode_jwt, create_jwt, JustMsgModel
-from .datas import ConfigData
-
-config = ConfigData().get_data()['email']
+from api.models import DBUser, database_manager
+from api.users import get_user_email, UserInDB, get_password_hash, get_random_slat
+from api.utils import decode_jwt, create_jwt, JustMsgModel
+from api.datas import ConfigData
 
 
 class EmailResetPassword(BaseModel):
@@ -29,12 +27,12 @@ class EmailVerifyInfo(JustMsgModel):
 
 
 def build_email_verify_link(token: str) -> str:
-    return f"{config['link']}?token={token}"
+    return f"{ConfigData.get_email()['link']}?token={token}"
 
 
 async def send_email(to_address: str, token: str):
     message = EmailMessage()
-    message["From"] = config['username']
+    message["From"] = ConfigData.get_email()['username']
     message["To"] = to_address
     message["Subject"] = "密码重置 / 邮箱验证"
 
@@ -53,11 +51,11 @@ async def send_email(to_address: str, token: str):
 
     await aiosmtplib.send(
         message,
-        hostname=config['smtp'],
-        port=config['port'],
-        username=config['username'],
-        password=config['password'],
-        use_tls=config['use_tls'],
+        hostname=ConfigData.get_email()['smtp'],
+        port=ConfigData.get_email()['port'],
+        username=ConfigData.get_email()['username'],
+        password=ConfigData.get_email()['password'],
+        use_tls=ConfigData.get_email()['use_tls'],
     )
 
 

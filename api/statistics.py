@@ -2,16 +2,13 @@ from datetime import datetime
 from pydantic import BaseModel
 from collections import defaultdict
 
-from .account_datas import DiamondTotalInfo, DiamondTypeInfo
-from .arknights_data_analysis import get_or_create_osr_pool
-from .cache import cached_with_refresh
-from .datas import AnalysisData
-from .users import UserInDB, UserConfig
-from .pydantic_models import UsernameDisplayStatus
-from .models import Account, DBUser, database_manager, OperatorSearchRecord, OSROperator, OSRPool, PayRecord, Platform, DiamondRecord
-from .utils import f_hide_mid
-
-pool_progress = AnalysisData().get_data()['pool_progress']
+from api.account_datas import DiamondTotalInfo, DiamondTypeInfo
+from api.cache import cached_with_refresh
+from api.datas import PoolInfo
+from api.users import UserInDB, UserConfig
+from api.pydantic_models import UsernameDisplayStatus
+from api.models import Account, DBUser, database_manager, OperatorSearchRecord, OSROperator, PayRecord, Platform, DiamondRecord
+from api.utils import f_hide_mid
 
 
 class LuckyRankUser(BaseModel):
@@ -148,7 +145,10 @@ async def get_lucky_rank_info(user: UserInDB) -> LuckyRankInfo | None:
 
 
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'pool_lucky_rank_info')
-async def compute_pool_lucky_rank() -> dict | None:
+async def compute_pool_lucky_rank() -> dict[str, object] | None:
+    def get_first_pool_id_of_type(pool_type: str) -> str:
+        return next((pool_id for pool_id in pools if PoolInfo.get_pool_info(pool_id)['type'] == pool_type), '')
+
     enable_users: list[DBUser] = []
 
     user: DBUser
@@ -158,11 +158,19 @@ async def compute_pool_lucky_rank() -> dict | None:
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
 
-    pool, _ = await get_or_create_osr_pool(pool_progress['pool'])
-    if pool is None:
+    pools = PoolInfo.get_now_pools()
+    if pools is None:
         return None
 
-    records = await database_manager.execute(OperatorSearchRecord.select().join_from(OperatorSearchRecord, Account).where(OperatorSearchRecord.pool == pool).where(Account.owner.in_(enable_users)))
+    pool: str = ''
+    pool_types = ['LINKAGE', 'LIMITED', 'SINGLE', 'NORMAL', 'CLASSIC']
+    for pool_type in pool_types:
+        if pool := get_first_pool_id_of_type(pool_type):
+            break
+    if not pool:
+        return None
+
+    records = await database_manager.execute(OperatorSearchRecord.select().join_from(OperatorSearchRecord, Account).where(OperatorSearchRecord.pool_id == pool).where(Account.owner.in_(enable_users)))
 
     for record in records:
         account = record.account
@@ -187,7 +195,7 @@ async def compute_pool_lucky_rank() -> dict | None:
         'lucky': list(osr_lucky[:10]),
         'unlucky': list(reversed(osr_lucky[-10:])),
         'time': datetime.now(),
-        'pool': pool.name
+        'pool': pool
     }
 
     return osr_lucky_rank
@@ -264,7 +272,6 @@ async def get_six_up_rank_info(user: UserInDB) -> UPRankInfo | None:
     return UPRankInfo(**info)
 
 
-# noinspection all
 @cached_with_refresh(ttl=7200, key_builder=lambda: 'site_statistics')
 async def compute_site_statistics() -> dict:
     enable_users: list[DBUser] = []
@@ -304,8 +311,8 @@ async def compute_site_statistics() -> dict:
             Platform.ANDROID: {'platform': Platform.ANDROID, 'number': 0},
             Platform.IOS: {'platform': Platform.IOS, 'number': 0}
         },
-        'type_use': defaultdict(lambda: {'type': '', 'number': 0}),
-        'type_get': defaultdict(lambda: {'type': '', 'number': 0})
+        'type_use': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0}),
+        'type_get': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0})
     }
 
     for account in accounts:
@@ -331,11 +338,11 @@ async def compute_site_statistics() -> dict:
                 diamond_info['type_use'][diamond_record.operation]['type'] = diamond_record.operation
                 diamond_info['type_use'][diamond_record.operation]['number'] -= change
 
-    diamond_info['type_get'] = list(sorted(diamond_info['type_get'].values(), key=lambda x: x['number'], reverse=True))
-    diamond_info['type_use'] = list(sorted(diamond_info['type_use'].values(), key=lambda x: x['number'], reverse=True))
+    diamond_info['type_get'] = list(sorted(diamond_info['type_get'].values(), key=lambda x: x['number'], reverse=True))  # noqa
+    diamond_info['type_use'] = list(sorted(diamond_info['type_use'].values(), key=lambda x: x['number'], reverse=True))  # noqa
 
     osr_info = {
-        'osr_number_pool': defaultdict(int),
+        'osr_number_pool': defaultdict[str, int | dict[str, int]](int),
         'osr_number_month': defaultdict(int),
         'osr_lucky': {
             '6': 0, '5': 0, '4': 0, '3': 0,
@@ -352,9 +359,15 @@ async def compute_site_statistics() -> dict:
     records = await database_manager.execute(OperatorSearchRecord.select().where(OperatorSearchRecord.account.in_(accounts)).order_by(OperatorSearchRecord.time))
     record: OperatorSearchRecord
     for record in records:
-        pool: OSRPool = record.pool
-        pool_name = record.pool.name
+        pool_id: str = record.pool_id
+        if not pool_id:
+            continue
 
+        pool_info = PoolInfo.get_pool_info(pool_id)
+        if pool_info['type'] == 'UNKNOWN':
+            continue
+
+        pool_name = pool_info.get('name')
         operators = record.operators
         operators_number = len(operators)
 
@@ -371,7 +384,7 @@ async def compute_site_statistics() -> dict:
                 osr_info['osr_lucky']['count'][r] += 1
             osr_info['osr_lucky'][rarity] += 1
 
-            if pool.is_up_pool and rarity == '6':
+            if rarity == '6' and 'up_char_info' in pool_info:
                 if pool_name not in osr_info['osr_not_up']:
                     osr_info['osr_not_up'][pool_name] = 0
 

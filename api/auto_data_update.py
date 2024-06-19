@@ -3,7 +3,7 @@ from asyncio import sleep
 from api.arknights_data_request import ArknightsDataRequest, create_request_by_token
 from api.arknights_data_analysis import ArknightsDataAnalysis
 from api.models import Account, GiftRecord, database_manager
-from api.datas import AnalysisData
+from api.datas import GiftCodeInfo
 
 
 async def update_all_accounts_data():
@@ -17,11 +17,9 @@ async def update_all_accounts_data():
     print(f'update_all_accounts_data end, update {account_n} accounts')
 
 
-gift_data: list[str] = AnalysisData().get_data()['gift_codes']['OFFICIAL']
-
-
 async def auto_get_gift():
-    if not gift_data:
+    gift_code = GiftCodeInfo.get_gift_code()
+    if not gift_code:
         return
 
     account: Account
@@ -30,7 +28,7 @@ async def auto_get_gift():
             continue
 
         used_gift_code = [record.code for record in await database_manager.execute(GiftRecord.select().where(GiftRecord.account == account))]
-        need_gift_code = [code for code in gift_data if code not in used_gift_code]
+        need_gift_code = [code for code in gift_code if code not in used_gift_code]
 
         if not need_gift_code:
             continue

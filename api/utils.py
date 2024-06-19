@@ -7,12 +7,7 @@ from datetime import timedelta, timezone, datetime
 from pydantic import BaseModel
 from jose import jwt
 
-from .datas import ConfigData
-
-config = ConfigData().get_data()['safe']
-
-SECRET_KEY = config['SECRET_KEY']
-ALGORITHM = config['ALGORITHM']
+from api.datas import ConfigData
 
 
 class JustMsgModel(BaseModel):
@@ -103,9 +98,9 @@ def create_jwt(data: dict, expires_delta: timedelta = timedelta(minutes=60)) -> 
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, ConfigData.get_safe()['SECRET_KEY'], algorithm=ConfigData.get_safe()['ALGORITHM'])
     return encoded_jwt
 
 
 def decode_jwt(encoded_jwt: str) -> dict:
-    return jwt.decode(encoded_jwt, SECRET_KEY, algorithms=[ALGORITHM])
+    return jwt.decode(encoded_jwt, ConfigData.get_safe()['SECRET_KEY'], algorithms=ConfigData.get_safe()['ALGORITHM'])

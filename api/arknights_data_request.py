@@ -3,8 +3,8 @@ from urllib.parse import quote
 
 from typing_extensions import override
 
-from .models import AccountChannel
-from .utils import AsyncRequest
+from api.models import AccountChannel
+from api.utils import AsyncRequest
 from abc import ABC, abstractmethod
 
 

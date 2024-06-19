@@ -9,7 +9,7 @@ from jose import JWTError, ExpiredSignatureError
 
 from pydantic import BaseModel
 
-from .utils import create_jwt, decode_jwt
+from api.utils import create_jwt, decode_jwt
 
 
 class CaptchaInfo(BaseModel):

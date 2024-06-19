@@ -7,10 +7,10 @@ from jose import JWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
-from .models import DBUser
-from .models import database_manager
-from .pydantic_models import UserConfig
-from .utils import decode_jwt
+from api.models import DBUser
+from api.models import database_manager
+from api.pydantic_models import UserConfig
+from api.utils import decode_jwt
 
 
 class Token(BaseModel):
