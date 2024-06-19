@@ -71,7 +71,7 @@ class SiteStatisticsInfo(BaseModel):
 
 def get_confined_account_name(user: UserInDB, account: Account) -> str:
     if user.username == account.owner.name:
-        return f'{account.nickname} (Owner)'
+        return f'{account.nickname} (Self)'
 
     username: str
     user_config: UserConfig = account.owner.user_config
@@ -93,12 +93,7 @@ def get_confined_account_name(user: UserInDB, account: Account) -> str:
 
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'lucky_rank_info')
 async def compute_lucky_rank() -> dict | None:
-    enable_users: list[DBUser] = []
-
-    user: DBUser
-    for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        if user.user_config.is_lucky_rank:
-            enable_users.append(user)
+    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_lucky_rank])
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
 
@@ -149,12 +144,7 @@ async def compute_pool_lucky_rank() -> dict[str, object] | None:
     def get_first_pool_id_of_type(pool_type: str) -> str:
         return next((pool_id for pool_id in pools if PoolInfo.get_pool_info(pool_id)['type'] == pool_type), '')
 
-    enable_users: list[DBUser] = []
-
-    user: DBUser
-    for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        if user.user_config.is_lucky_rank:
-            enable_users.append(user)
+    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_lucky_rank])
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
 
@@ -213,21 +203,16 @@ async def get_pool_lucky_rank_info(user: UserInDB) -> PoolLuckyRankInfo | None:
     return PoolLuckyRankInfo(**info)
 
 
-# noinspection all
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'six_up_rank_info')
 async def compute_six_up_rank() -> dict | None:
-    enable_users: list[DBUser] = []
-
-    user: DBUser
-    for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        if user.user_config.is_lucky_rank:
-            enable_users.append(user)
+    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_lucky_rank])
+    up_pools = list([k for k, v in PoolInfo.get_all_pools().items() if 'up_char_info' in v])
 
     osr_up = defaultdict(lambda: {'six': 0, 'not_up': 0, 'account': None, 'avg': 0.0})
 
     records = await database_manager.execute(
-        OperatorSearchRecord.select().join_from(OperatorSearchRecord, Account).where(Account.owner.in_(enable_users))
-        .join_from(OperatorSearchRecord, OSRPool).where(OSRPool.is_up_pool == True)
+        OperatorSearchRecord.select().where(OperatorSearchRecord.pool_id.in_(up_pools))
+        .join_from(OperatorSearchRecord, Account).where(Account.owner.in_(enable_users))
     )
 
     record: OperatorSearchRecord
@@ -237,7 +222,7 @@ async def compute_six_up_rank() -> dict | None:
 
         operator: OSROperator
         for operator in record.operators:
-            if operator.rarity == 6:
+            if operator.rarity == 6 and operator.is_up is not None:
                 osr_up[account.id]['six'] += 1
                 if not operator.is_up:
                     osr_up[account.id]['not_up'] += 1
@@ -274,16 +259,11 @@ async def get_six_up_rank_info(user: UserInDB) -> UPRankInfo | None:
 
 @cached_with_refresh(ttl=7200, key_builder=lambda: 'site_statistics')
 async def compute_site_statistics() -> dict:
-    enable_users: list[DBUser] = []
-
-    user: DBUser
-    for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)):
-        if user.user_config.is_statistics:
-            enable_users.append(user)
-
+    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_statistics])
     accounts = [account for account in await database_manager.execute(Account.select().where(Account.owner.in_(enable_users)))]
-    account_number = len(accounts)
-    available_account_number = await database_manager.count(Account.select().where(Account.owner.in_(enable_users)).where(Account.available == True))
+
+    account_number: int = len(accounts)
+    available_account_number: int = await database_manager.count(Account.select().where(Account.owner.in_(enable_users)).where(Account.available == True))
 
     account_info: dict = {
         'account_number': account_number,
@@ -403,7 +383,7 @@ async def compute_site_statistics() -> dict:
     for osr_not_up_pool in osr_info['osr_not_up']:
         osr_info['osr_not_up_avg'][osr_not_up_pool] = osr_info['osr_not_up'][osr_not_up_pool] / osr_info['osr_six'][osr_not_up_pool]
 
-    osr_info['osr_number_month'] = dict(reversed(osr_info['osr_number_month'].items()))
+    osr_info['osr_number_month'] = dict(reversed(osr_info['osr_number_month'].items()))  # noqa
 
     statistics_info = {
         'account_info': account_info,
