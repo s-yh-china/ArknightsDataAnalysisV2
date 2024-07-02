@@ -151,7 +151,5 @@ class ReconnectAsyncPooledMySQLDatabase(ReconnectMixin, AsyncPooledMySQLDatabase
         return cls._instance
 
 
-database_config: dict = ConfigData.get_mysql()
-
-database_proxy.initialize(ReconnectAsyncPooledMySQLDatabase.get_db_instance(**database_config))
+database_proxy.initialize(ReconnectAsyncPooledMySQLDatabase.get_db_instance(**ConfigData.get_mysql()))
 database_proxy.create_tables([DBUser, Account, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord, GiftRecord])

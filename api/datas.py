@@ -6,7 +6,7 @@ from intervaltree import IntervalTree
 
 
 class JsonData:
-    __data: dict = {}
+    data: dict = {}
 
     def __init__(self, data_file: str):
         self.data_file: str = data_file
@@ -19,15 +19,15 @@ class JsonData:
     def load_data(self) -> dict:
         with open(self.data_file, 'r', encoding='utf-8') as json_file:
             type(self).data = json.load(json_file)
-        return type(self).__data
+        return type(self).data
 
     def update_data(self) -> None:
         with open(self.data_file, 'w', encoding='utf-8') as json_file:
-            json.dump(type(self).__data, json_file, indent=4, ensure_ascii=False)
+            json.dump(type(self).data, json_file, indent=4, ensure_ascii=False)
 
     @classmethod
     def get_data(cls) -> dict:
-        return cls.__data
+        return cls.data
 
 
 class PoolInfo(JsonData):
@@ -41,12 +41,12 @@ class PoolInfo(JsonData):
         super().load_data()
         self.__time_tree = IntervalTree()
         self.pool_name_to_id = {}
-        for pool in self.__data['pool'].values():
+        for pool in self.data['pool'].values():
             self.__time_tree[pool['start']:pool['end'] + 1] = pool
             if pool['real_name'] not in self.pool_name_to_id:
                 self.pool_name_to_id[pool['real_name']] = []
             self.pool_name_to_id[pool['real_name']].append(pool['id'])
-        return self.__data
+        return self.data
 
     def update_data(self) -> None:
         try:
@@ -57,12 +57,12 @@ class PoolInfo(JsonData):
 
     @classmethod
     def get_all_pools(cls) -> dict[str, dict[str, str | int | dict[str, int] | list[str]]]:
-        return cls.__data['pool']
+        return cls.data['pool']
 
     @classmethod
     def get_pool_info(cls, pool_id: str | None) -> dict[str, str | int | dict[str, int] | list[str]]:
         if pool_id is not None:
-            if pool_info := cls.__data['pool'].get(pool_id):
+            if pool_info := cls.data['pool'].get(pool_id):
                 return pool_info
         return {
             "id": "UNKNOWN_0_1_1",
@@ -81,7 +81,7 @@ class PoolInfo(JsonData):
 
     @classmethod
     def get_now_pools(cls) -> list[str]:
-        return cls.__data['process']
+        return cls.data['process']
 
     @classmethod
     def get_pool_id_by_info(cls, real_name: str, time: int) -> str | None:
@@ -103,7 +103,7 @@ class PoolInfo(JsonData):
 
 
 class GiftCodeInfo(JsonData):
-    __data: dict[str, list[str]] = {
+    data: dict[str, list[str]] = {
         "OFFICIAL": []
     }
 
@@ -112,14 +112,14 @@ class GiftCodeInfo(JsonData):
 
     @classmethod
     def get_gift_code(cls, server: str = 'OFFICIAL') -> list[str]:
-        return cls.__data.get(server, [])
+        return cls.data.get(server, [])
 
     def update_data(self) -> None:
         pass
 
 
 class ConfigData(JsonData):
-    __data: dict = {
+    data: dict = {
         'version': '0.1.0',
         'safe': {
             'SECRET_KEY': os.urandom(32).hex(),
@@ -162,19 +162,19 @@ class ConfigData(JsonData):
 
     @classmethod
     def get_email(cls):
-        return cls.__data['email']
+        return cls.data['email']
 
     @classmethod
     def get_safe(cls):
-        return cls.__data['safe']
+        return cls.data['safe']
 
     @classmethod
     def get_mysql(cls):
-        return cls.__data['mysql']
+        return cls.data['mysql']
 
     @classmethod
     def get_user(cls):
-        return cls.__data['user']
+        return cls.data['user']
 
     def update_data(self) -> None:
         super().update_data()

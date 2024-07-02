@@ -136,7 +136,7 @@ async def get_lucky_rank_info(user: UserInDB) -> LuckyRankInfo | None:
         item['name'] = get_confined_account_name(user, item['account'])
     for item in info['unlucky']:
         item['name'] = get_confined_account_name(user, item['account'])
-    return LuckyRankInfo(**info)
+    return LuckyRankInfo.model_validate(info)
 
 
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'pool_lucky_rank_info')
@@ -200,7 +200,7 @@ async def get_pool_lucky_rank_info(user: UserInDB) -> PoolLuckyRankInfo | None:
         item['name'] = get_confined_account_name(user, item['account'])
     for item in info['unlucky']:
         item['name'] = get_confined_account_name(user, item['account'])
-    return PoolLuckyRankInfo(**info)
+    return PoolLuckyRankInfo.model_validate(info)
 
 
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'six_up_rank_info')
@@ -254,7 +254,7 @@ async def get_six_up_rank_info(user: UserInDB) -> UPRankInfo | None:
         item['name'] = get_confined_account_name(user, item['account'])
     for item in info['not_up']:
         item['name'] = get_confined_account_name(user, item['account'])
-    return UPRankInfo(**info)
+    return UPRankInfo.model_validate(info)
 
 
 @cached_with_refresh(ttl=7200, key_builder=lambda: 'site_statistics')
@@ -396,4 +396,4 @@ async def compute_site_statistics() -> dict:
 
 
 async def get_site_statistics_info() -> SiteStatisticsInfo:
-    return SiteStatisticsInfo(**(await compute_site_statistics()))
+    return SiteStatisticsInfo.model_validate(await compute_site_statistics())
