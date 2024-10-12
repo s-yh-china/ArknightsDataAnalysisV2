@@ -3,14 +3,14 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 
-from api.datas import ConfigData
-from api.email import EmailResetPassword, create_email_verify, send_email
-from api.users import Token, UserInfo, UserCreate, UserInDB, UserConfig
-from api.users import authenticate_user, get_current_active_user, get_user, create_user, get_user_email
-from api.users import modify_user_config
+from src.api.datas import ConfigData
+from src.api.email import EmailResetPassword, create_email_verify, send_email
+from src.api.users import Token, UserInfo, UserCreate, UserInDB, UserConfig
+from src.api.users import authenticate_user, get_current_active_user, get_user, create_user, get_user_email
+from src.api.users import modify_user_config
 
-from api.captcha import valid_captcha_code
-from api.utils import create_jwt, JustMsgModel
+from src.api.captcha import valid_captcha_code
+from src.api.utils import create_jwt, JustMsgModel
 
 router = APIRouter(
     prefix="/api/users",
@@ -86,6 +86,6 @@ async def password_reset(payload: EmailResetPassword, tasks: BackgroundTasks):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password reset is not allowed",
         )
-    token = await create_email_verify(payload.email, 'change_password', payload.dict())
+    token = await create_email_verify(payload.email, 'change_password', payload.model_dump())
     tasks.add_task(send_email, payload.email, token)
     return JustMsgModel(code=202, msg="accept")

@@ -3,11 +3,10 @@ from pydantic import BaseModel
 from datetime import datetime
 from collections import defaultdict
 
-from api.datas import PoolInfo
-from api.models import database_manager
-from api.models import Account, OperatorSearchRecord, OSROperator, Platform, PayRecord, DiamondRecord
-from api.accounts import AccountInDB
-from api.pydantic_models import PoolInfoModel
+from src.api.datas import PoolInfo
+from src.api.databases import Account, OperatorSearchRecord, OSROperator, Platform, PayRecord, DiamondRecord
+from src.api.accounts import AccountInDB
+from src.api.models import PoolInfoModel
 
 
 class AccountDataTime(BaseModel):
@@ -55,20 +54,15 @@ class PayRecordInfo(BaseModel):
     pay_info: list[PayInfo]
 
 
-class DiamondTotalInfo(BaseModel):
-    platform: Platform
-    number: int
-
-
 class DiamondTypeInfo(BaseModel):
     type: str
     number: int
 
 
 class DiamondInfo(BaseModel):
-    now: dict[Platform, DiamondTotalInfo]
-    total_use: dict[Platform, DiamondTotalInfo]
-    total_get: dict[Platform, DiamondTotalInfo]
+    now: int
+    total_use: int
+    total_get: int
     type_use: list[DiamondTypeInfo]
     type_get: list[DiamondTypeInfo]
     day: dict[str, int]
@@ -89,7 +83,7 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
 
     osr_pool: list[str] = []
 
-    records = await database_manager.execute(OperatorSearchRecord.select().where(OperatorSearchRecord.account == db_account).order_by(OperatorSearchRecord.time))
+    records = await OperatorSearchRecord.select().where(OperatorSearchRecord.account == db_account).order_by(OperatorSearchRecord.time).aio_execute()
 
     record: OperatorSearchRecord
     for record in records:
@@ -101,16 +95,15 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
         if pool_info['type'] == 'UNKNOWN':
             continue
 
-        pool_name: str = pool_info.get('name')
         pool_type: str = PoolInfo.get_pool_count_type(pool_info)
-        if pool_name not in osr_pool:
-            osr_pool.append(pool_name)
+        if pool_id not in osr_pool:
+            osr_pool.append(pool_id)
 
-        operators = record.operators
+        operators = await OSROperator.select().where(OSROperator.record == record).aio_execute()
         operators_number = len(operators)
 
         osr_number_month[datetime.fromtimestamp(record.time).strftime('%Y-%m')] += operators_number
-        osr_number[pool_name] += operators_number
+        osr_number[pool_id] += operators_number
         osr_number['total']['all'] += operators_number
 
         operator: OSROperator
@@ -125,13 +118,13 @@ async def get_osr_info(account: AccountInDB) -> OSRInfo:
             osr_lucky[pool_type]['count'][rarity] = 0
 
             if rarity == '6' and 'up_char_info' in pool_info:
-                if pool_name not in osr_not_up:
-                    osr_not_up[pool_name] = 0
+                if pool_id not in osr_not_up:
+                    osr_not_up[pool_id] = 0
 
-                osr_six[pool_name] += 1
+                osr_six[pool_id] += 1
                 osr_six['total'] += 1
                 if not operator.is_up:
-                    osr_not_up[pool_name] += 1
+                    osr_not_up[pool_id] += 1
                     osr_not_up['total'] += 1
 
     osr_lucky_avg = {'6': [], '5': [], '4': [], '3': []}
@@ -191,11 +184,11 @@ async def get_osr_pool_info(account: AccountInDB, pool_id: str) -> OSRPoolInfo:
     osr_six_record = []
     osr_five_record = []
 
-    records = await database_manager.execute(OperatorSearchRecord.select().where((OperatorSearchRecord.account == db_account) & (OperatorSearchRecord.pool_id == pool_id)).order_by(OperatorSearchRecord.time))
+    records = await OperatorSearchRecord.select().where((OperatorSearchRecord.account == db_account) & (OperatorSearchRecord.pool_id == pool_id)).order_by(OperatorSearchRecord.time).aio_execute()
 
     record: OperatorSearchRecord
     for record in records:
-        operators = record.operators
+        operators = await OSROperator.select().where(OSROperator.record == record).aio_execute()
         operators_number = len(operators)
         record_time = datetime.fromtimestamp(record.time)
 
@@ -252,7 +245,7 @@ async def get_pay_record_info(account: AccountInDB) -> PayRecordInfo:
     pay_info = []
     total_money = 0
 
-    pay_records = await database_manager.execute(PayRecord.select().where(PayRecord.account == db_account).order_by(PayRecord.pay_time.desc()))
+    pay_records = await PayRecord.select().where(PayRecord.account == db_account).order_by(PayRecord.pay_time.desc()).aio_execute()
     pay_record: PayRecord
     for pay_record in pay_records:
         info = PayInfo(time=datetime.fromtimestamp(pay_record.pay_time), name=pay_record.name, amount=pay_record.amount / 100, platform=pay_record.platform)
@@ -265,45 +258,30 @@ async def get_pay_record_info(account: AccountInDB) -> PayRecordInfo:
 async def get_diamond_info(account: AccountInDB) -> DiamondInfo:
     db_account = await account.get_db()
 
-    info = {
-        'now': {
-            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
-            Platform.IOS: {'platform': Platform.IOS, 'number': -1}
-        },
-        'total_use': {
-            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
-            Platform.IOS: {'platform': Platform.IOS, 'number': -1}
-        },
-        'total_get': {
-            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': -1},
-            Platform.IOS: {'platform': Platform.IOS, 'number': -1}
-        },
+    info: dict = {
+        'now': None,
+        'total_use': 0,
+        'total_get': 0,
         'type_use': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0}),
         'type_get': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0}),
         'day': defaultdict(int),
     }
 
-    records = await database_manager.execute(DiamondRecord.select().where(DiamondRecord.account == db_account).order_by(DiamondRecord.operate_time.desc()))
+    records = await DiamondRecord.select().where(DiamondRecord.account == db_account).order_by(DiamondRecord.operate_time.desc()).aio_execute()
 
     record: DiamondRecord
     for record in records:
-        if info['now'][record.platform]['number'] == -1:
-            info['now'][record.platform]['number'] = record.after
+        if info['now'] is None:
+            info['now'] = record.after
 
         change = record.after - record.before
 
         if change > 0:
-            if info['total_get'][record.platform]['number'] == -1:
-                info['total_get'][record.platform]['number'] = 0
-
-            info['total_get'][record.platform]['number'] += change
+            info['total_get'] += change
             info['type_get'][record.operation]['number'] += change
             info['type_get'][record.operation]['type'] = record.operation
         else:
-            if info['total_use'][record.platform]['number'] == -1:
-                info['total_use'][record.platform]['number'] = 0
-
-            info['total_use'][record.platform]['number'] -= change
+            info['total_use'] -= change
             info['type_use'][record.operation]['number'] -= change
             info['type_use'][record.operation]['type'] = record.operation
 
@@ -314,7 +292,7 @@ async def get_diamond_info(account: AccountInDB) -> DiamondInfo:
         'end_time': datetime.fromtimestamp(records[-1].operate_time) if records else datetime.fromtimestamp(0)
     }
 
-    info['type_get'] = list(sorted(info['type_get'].values(), key=lambda x: x['number'], reverse=True))  # noqa
-    info['type_use'] = list(sorted(info['type_use'].values(), key=lambda x: x['number'], reverse=True))  # noqa
+    info['type_get'] = list(sorted(info['type_get'].values(), key=lambda x: x['number'], reverse=True))
+    info['type_use'] = list(sorted(info['type_use'].values(), key=lambda x: x['number'], reverse=True))
 
     return DiamondInfo.model_validate(info)

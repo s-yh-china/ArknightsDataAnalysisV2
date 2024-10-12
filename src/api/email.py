@@ -7,10 +7,10 @@ from email.message import EmailMessage
 
 from pydantic import BaseModel
 
-from api.models import DBUser, database_manager
-from api.users import get_user_email, UserInDB, get_password_hash, get_random_slat
-from api.utils import decode_jwt, create_jwt, JustMsgModel
-from api.datas import ConfigData
+from src.api.databases import DBUser
+from src.api.users import get_user_email, UserInDB, get_password_hash
+from src.api.utils import decode_jwt, create_jwt, JustMsgModel
+from src.api.datas import ConfigData
 
 
 class EmailResetPassword(BaseModel):
@@ -80,11 +80,10 @@ async def email_verify(verify_token: str) -> EmailVerifyInfo:
         match type:
             case "verify_email":
                 db_user.disabled = False
-                await database_manager.update(db_user)
+                await db_user.aio_save()
             case "change_password":
                 db_user.hashed_password = payload.get("new_hashed_password")
-                db_user.slat = payload.get("new_slat")
-                await database_manager.update(db_user)
+                await db_user.aio_save()
             case _:
                 raise credentials_exception
     except JWTError:
@@ -113,13 +112,11 @@ async def create_email_verify(email: str, type: str, ex_data: dict = None) -> st
     match type:
         case "verify_email":
             db_user.disabled = True
-            await database_manager.update(db_user)
+            await db_user.aio_save()
         case "change_password":
-            new_slat: str = get_random_slat()
-            new_hashed_password: str = get_password_hash(ex_data.get('new_password'), new_slat)
+            new_hashed_password: str = get_password_hash(ex_data.get('new_password'))
             data.update({
-                'new_hashed_password': new_hashed_password,
-                'new_slat': new_slat
+                'new_hashed_password': new_hashed_password
             })
         case _:
             raise HTTPException(

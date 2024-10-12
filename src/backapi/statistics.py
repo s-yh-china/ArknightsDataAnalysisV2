@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from api.statistics import LuckyRankInfo, PoolLuckyRankInfo, UPRankInfo, SiteStatisticsInfo
-from api.statistics import get_lucky_rank_info, get_pool_lucky_rank_info, get_six_up_rank_info, get_site_statistics_info
-from api.users import UserInDB, get_current_active_user
-from api.utils import JustMsgModel
+from src.api.statistics import LuckyRankInfo, PoolLuckyRankInfo, UPRankInfo, SiteStatisticsInfo
+from src.api.statistics import get_lucky_rank_info, get_pool_lucky_rank_info, get_six_up_rank_info, get_site_statistics_info
+from src.api.users import UserInDB, get_current_active_user
+from src.api.utils import JustMsgModel
 
 router = APIRouter(
     prefix="/api/statistics",

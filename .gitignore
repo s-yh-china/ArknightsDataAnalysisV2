@@ -37,7 +37,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Unit test_html / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -128,7 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# test data
+# test_html data
 *.db
 config.json
 errlog.txt
@@ -138,4 +138,9 @@ cache
 # Fleet
 .fleet
 .idea
+
+# pdm
+.pdm-python
+
+# data
 data/pool_info.json

@@ -23,7 +23,7 @@ class JsonData:
 
     def update_data(self) -> None:
         with open(self.data_file, 'w', encoding='utf-8') as json_file:
-            json.dump(type(self).data, json_file, indent=4, ensure_ascii=False)
+            json_file.write(json.dumps(type(self).data, indent=4, ensure_ascii=False))
 
     @classmethod
     def get_data(cls) -> dict:
@@ -39,14 +39,14 @@ class PoolInfo(JsonData):
 
     def load_data(self) -> dict:
         super().load_data()
-        self.__time_tree = IntervalTree()
-        self.pool_name_to_id = {}
-        for pool in self.data['pool'].values():
-            self.__time_tree[pool['start']:pool['end'] + 1] = pool
-            if pool['real_name'] not in self.pool_name_to_id:
-                self.pool_name_to_id[pool['real_name']] = []
-            self.pool_name_to_id[pool['real_name']].append(pool['id'])
-        return self.data
+        type(self).__time_tree = IntervalTree()
+        type(self).pool_name_to_id = {}
+        for pool in type(self).data['pool'].values():
+            type(self).__time_tree[pool['start']:pool['end'] + 1] = pool
+            if pool['real_name'] not in type(self).pool_name_to_id:
+                type(self).pool_name_to_id[pool['real_name']] = []
+            type(self).pool_name_to_id[pool['real_name']].append(pool['id'])
+        return type(self).data
 
     def update_data(self) -> None:
         try:

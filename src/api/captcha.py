@@ -3,13 +3,12 @@ import base64
 
 from io import BytesIO
 
+from pydantic import BaseModel
 from fastapi import HTTPException, status
 from PIL import Image, ImageDraw, ImageFont
 from jose import JWTError, ExpiredSignatureError
 
-from pydantic import BaseModel
-
-from api.utils import create_jwt, decode_jwt
+from src.api.utils import create_jwt, decode_jwt
 
 
 class CaptchaInfo(BaseModel):
@@ -94,10 +93,7 @@ def noise(image, width=120, height=35, line_count=3, point_count=15):
 
 
 def create_captcha_token(captcha_code: str) -> str:
-    data = {
-        'captcha_code': captcha_code
-    }
-    return create_jwt(data)
+    return create_jwt({'captcha_code': captcha_code})
 
 
 def valid_captcha_code(captcha: CaptchaValid):

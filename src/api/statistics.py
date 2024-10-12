@@ -2,13 +2,13 @@ from datetime import datetime
 from pydantic import BaseModel
 from collections import defaultdict
 
-from api.account_datas import DiamondTotalInfo, DiamondTypeInfo
-from api.cache import cached_with_refresh
-from api.datas import PoolInfo
-from api.users import UserInDB, UserConfig
-from api.pydantic_models import UsernameDisplayStatus
-from api.models import Account, DBUser, database_manager, OperatorSearchRecord, OSROperator, PayRecord, Platform, DiamondRecord
-from api.utils import f_hide_mid
+from src.api.account_datas import DiamondTypeInfo
+from src.api.cache import cached_with_refresh
+from src.api.datas import PoolInfo
+from src.api.users import UserInDB, UserConfig
+from src.api.models import UsernameDisplayStatus
+from src.api.databases import Account, DBUser, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord
+from src.api.utils import f_hide_mid
 
 
 class LuckyRankUser(BaseModel):
@@ -48,9 +48,9 @@ class SiteAccountInfo(BaseModel):
 
 
 class SiteDiamondInfo(BaseModel):
-    now: dict[Platform, DiamondTotalInfo]
-    total_use: dict[Platform, DiamondTotalInfo]
-    total_get: dict[Platform, DiamondTotalInfo]
+    now: int
+    total_use: int
+    total_get: int
     type_use: list[DiamondTypeInfo]
     type_get: list[DiamondTypeInfo]
 
@@ -93,18 +93,19 @@ def get_confined_account_name(user: UserInDB, account: Account) -> str:
 
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'lucky_rank_info')
 async def compute_lucky_rank() -> dict | None:
-    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_lucky_rank])
+    enable_users: list[DBUser] = list([user for user in await DBUser.select().where(DBUser.disabled == False).aio_execute() if user.user_config.is_lucky_rank])
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
 
-    records = await database_manager.execute(OperatorSearchRecord.select().join_from(OperatorSearchRecord, Account).where(Account.owner.in_(enable_users)))
+    records = await OperatorSearchRecord.select(OperatorSearchRecord, Account).join(Account).where(Account.owner.in_(enable_users)).aio_execute()
 
+    record: OperatorSearchRecord
     for record in records:
         account = record.account
         osr_lucky[account.id]['account'] = account
 
         operator: OSROperator
-        for operator in record.operators:
+        for operator in await OSROperator.select().where(OSROperator.record == record).aio_execute():
             osr_lucky[account.id]['count'] += 1
             if operator.rarity == 6:
                 osr_lucky[account.id]['six'] += 1
@@ -144,7 +145,7 @@ async def compute_pool_lucky_rank() -> dict[str, object] | None:
     def get_first_pool_id_of_type(pool_type: str) -> str:
         return next((pool_id for pool_id in pools if PoolInfo.get_pool_info(pool_id)['type'] == pool_type), '')
 
-    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_lucky_rank])
+    enable_users: list[DBUser] = list([user for user in await DBUser.select().where(DBUser.disabled == False).aio_execute() if user.user_config.is_lucky_rank])
 
     osr_lucky = defaultdict(lambda: {'six': 0, 'count': 0, 'account': None, 'avg': 0.0})
 
@@ -152,7 +153,7 @@ async def compute_pool_lucky_rank() -> dict[str, object] | None:
     if pools is None:
         return None
 
-    pool: str = ''
+    pool: str | None = None
     pool_types = ['LINKAGE', 'LIMITED', 'SINGLE', 'NORMAL', 'CLASSIC']
     for pool_type in pool_types:
         if pool := get_first_pool_id_of_type(pool_type):
@@ -160,14 +161,15 @@ async def compute_pool_lucky_rank() -> dict[str, object] | None:
     if not pool:
         return None
 
-    records = await database_manager.execute(OperatorSearchRecord.select().join_from(OperatorSearchRecord, Account).where(OperatorSearchRecord.pool_id == pool).where(Account.owner.in_(enable_users)))
+    records = await OperatorSearchRecord.select(OperatorSearchRecord, Account).join(Account).where(OperatorSearchRecord.pool_id == pool).where(Account.owner.in_(enable_users)).aio_execute()
 
+    record: OperatorSearchRecord
     for record in records:
         account = record.account
         osr_lucky[account.id]['account'] = account
 
         operator: OSROperator
-        for operator in record.operators:
+        for operator in await OSROperator.select().where(OSROperator.record == record).aio_execute():
             osr_lucky[account.id]['count'] += 1
             if operator.rarity == 6:
                 osr_lucky[account.id]['six'] += 1
@@ -205,15 +207,12 @@ async def get_pool_lucky_rank_info(user: UserInDB) -> PoolLuckyRankInfo | None:
 
 @cached_with_refresh(ttl=3600, key_builder=lambda: 'six_up_rank_info')
 async def compute_six_up_rank() -> dict | None:
-    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_lucky_rank])
+    enable_users: list[DBUser] = list([user for user in await DBUser.select().where(DBUser.disabled == False).aio_execute() if user.user_config.is_lucky_rank])
     up_pools = list([k for k, v in PoolInfo.get_all_pools().items() if 'up_char_info' in v])
 
     osr_up = defaultdict(lambda: {'six': 0, 'not_up': 0, 'account': None, 'avg': 0.0})
 
-    records = await database_manager.execute(
-        OperatorSearchRecord.select().where(OperatorSearchRecord.pool_id.in_(up_pools))
-        .join_from(OperatorSearchRecord, Account).where(Account.owner.in_(enable_users))
-    )
+    records = await OperatorSearchRecord.select(OperatorSearchRecord, Account).where(OperatorSearchRecord.pool_id.in_(up_pools)).join(Account).where(Account.owner.in_(enable_users)).aio_execute()
 
     record: OperatorSearchRecord
     for record in records:
@@ -221,7 +220,7 @@ async def compute_six_up_rank() -> dict | None:
         osr_up[account.id]['account'] = account
 
         operator: OSROperator
-        for operator in record.operators:
+        for operator in await OSROperator.select().where(OSROperator.record == record).aio_execute():
             if operator.rarity == 6 and operator.is_up is not None:
                 osr_up[account.id]['six'] += 1
                 if not operator.is_up:
@@ -259,11 +258,11 @@ async def get_six_up_rank_info(user: UserInDB) -> UPRankInfo | None:
 
 @cached_with_refresh(ttl=7200, key_builder=lambda: 'site_statistics')
 async def compute_site_statistics() -> dict:
-    enable_users: list[DBUser] = list([user for user in await database_manager.execute(DBUser.select().where(DBUser.disabled == False)) if user.user_config.is_statistics])
-    accounts = [account for account in await database_manager.execute(Account.select().where(Account.owner.in_(enable_users)))]
+    enable_users: list[DBUser] = list([user for user in await DBUser.select().where(DBUser.disabled == False).aio_execute() if user.user_config.is_statistics])
+    accounts = [account for account in await Account.select().where(Account.owner.in_(enable_users)).aio_execute()]
 
     account_number: int = len(accounts)
-    available_account_number: int = await database_manager.count(Account.select().where(Account.owner.in_(enable_users)).where(Account.available == True))
+    available_account_number: int = await Account.select().where(Account.owner.in_(enable_users)).where(Account.available == True).aio_count()
 
     account_info: dict = {
         'account_number': account_number,
@@ -273,48 +272,36 @@ async def compute_site_statistics() -> dict:
 
     total_pay_money: int = 0
 
-    pay_records = await database_manager.execute(PayRecord.select().where(PayRecord.account.in_(accounts)))
+    pay_records = await PayRecord.select().where(PayRecord.account.in_(accounts)).aio_execute()
     pay_record: PayRecord
     for pay_record in pay_records:
         total_pay_money += pay_record.amount / 100
 
     diamond_info = {
-        'now': {
-            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': 0},
-            Platform.IOS: {'platform': Platform.IOS, 'number': 0}
-        },
-        'total_use': {
-            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': 0},
-            Platform.IOS: {'platform': Platform.IOS, 'number': 0}
-        },
-        'total_get': {
-            Platform.ANDROID: {'platform': Platform.ANDROID, 'number': 0},
-            Platform.IOS: {'platform': Platform.IOS, 'number': 0}
-        },
+        'now': 0,
+        'total_use': 0,
+        'total_get': 0,
         'type_use': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0}),
         'type_get': defaultdict[str, dict[str, object]](lambda: {'type': '', 'number': 0})
     }
 
     for account in accounts:
-        diamond_records = await database_manager.execute(DiamondRecord.select().where(DiamondRecord.account == account).order_by(DiamondRecord.operate_time.desc()))
-        platform_now = {
-            Platform.ANDROID: True,
-            Platform.IOS: True
-        }
+        diamond_records = await DiamondRecord.select().where(DiamondRecord.account == account).order_by(DiamondRecord.operate_time.desc()).aio_execute()
+        diamond_now = True
 
         diamond_record: DiamondRecord
         for diamond_record in diamond_records:
-            if platform_now[diamond_record.platform]:
-                platform_now[diamond_record.platform] = False
-                diamond_info['now'][diamond_record.platform]['number'] = diamond_record.after
+            if diamond_now:
+                diamond_now = False
+                diamond_info['now'] += diamond_record.after
 
             change = diamond_record.after - diamond_record.before
             if change > 0:
-                diamond_info['total_get'][diamond_record.platform]['number'] += change
+                diamond_info['total_get'] += change
                 diamond_info['type_get'][diamond_record.operation]['type'] = diamond_record.operation
                 diamond_info['type_get'][diamond_record.operation]['number'] += change
             else:
-                diamond_info['total_use'][diamond_record.platform]['number'] -= change
+                diamond_info['total_use'] -= change
                 diamond_info['type_use'][diamond_record.operation]['type'] = diamond_record.operation
                 diamond_info['type_use'][diamond_record.operation]['number'] -= change
 
@@ -336,7 +323,7 @@ async def compute_site_statistics() -> dict:
 
     osr_info['osr_number_pool']['total'] = {'all': 0, '3': 0, '4': 0, '5': 0, '6': 0}
 
-    records = await database_manager.execute(OperatorSearchRecord.select().where(OperatorSearchRecord.account.in_(accounts)).order_by(OperatorSearchRecord.time))
+    records = await OperatorSearchRecord.select().where(OperatorSearchRecord.account.in_(accounts)).order_by(OperatorSearchRecord.time).aio_execute()
     record: OperatorSearchRecord
     for record in records:
         pool_id: str = record.pool_id
@@ -348,7 +335,7 @@ async def compute_site_statistics() -> dict:
             continue
 
         pool_name = pool_info.get('name')
-        operators = record.operators
+        operators = await OSROperator.select().where(OSROperator.record == record).aio_execute()
         operators_number = len(operators)
 
         osr_info['osr_number_month'][datetime.fromtimestamp(record.time).strftime('%Y-%m')] += operators_number

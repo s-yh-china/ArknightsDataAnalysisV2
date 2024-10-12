@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from api.pydantic_models import PoolProgress, PoolInfoModel
-from api.accounts import get_current_active_user
-from api.datas import PoolInfo
+from src.api.models import PoolProgress, PoolInfoModel
+from src.api.accounts import get_current_active_user
+from src.api.datas import PoolInfo
 
 router = APIRouter(
     prefix="/api/utils",

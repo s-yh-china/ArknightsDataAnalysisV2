@@ -1,11 +1,10 @@
-from typing import cast
+from typing import cast, override
 from urllib.parse import quote
 
-from typing_extensions import override
-
-from api.models import AccountChannel
-from api.utils import AsyncRequest
 from abc import ABC, abstractmethod
+
+from src.api.databases import AccountChannel
+from src.api.utils import AsyncRequest
 
 
 class ArknightsDataRequest(ABC):

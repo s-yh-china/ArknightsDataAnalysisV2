@@ -1,9 +1,8 @@
 from typing import Union
 
-from .arknights_data_request import ArknightsDataRequest, create_request_by_token
-from .models import Account, AccountChannel, OperatorSearchRecord, OSROperator, DiamondRecord, Platform, PayRecord, GiftRecord
-from .models import database_manager
-from .datas import PoolInfo
+from src.api.arknights_data_request import ArknightsDataRequest, create_request_by_token
+from src.api.databases import Account, AccountChannel, OperatorSearchRecord, OSROperator, DiamondRecord, Platform, PayRecord, GiftRecord, database
+from src.api.datas import PoolInfo
 
 
 class ArknightsDataAnalysis:
@@ -23,13 +22,13 @@ class ArknightsDataAnalysis:
     async def fetch_osr(self, force: bool = False) -> None:
         last_time: int = 0
 
-        if not force and await database_manager.count(OperatorSearchRecord.select().where(OperatorSearchRecord.account == self.account)):
-            record: OperatorSearchRecord = await database_manager.get_or_none(OperatorSearchRecord.select(OperatorSearchRecord.account == self.account).order_by(OperatorSearchRecord.time.desc()).first())
+        if not force and await OperatorSearchRecord.select().where(OperatorSearchRecord.account == self.account).aio_count():
+            record: OperatorSearchRecord = (await OperatorSearchRecord.select().where(OperatorSearchRecord.account == self.account).order_by(OperatorSearchRecord.time.desc()).limit(1).aio_execute())[0]
             last_time = record.time
 
         osr_datas: list = await self.request.get_cards_record(last_time)
 
-        async with database_manager.transaction():
+        async with database.aio_atomic():
             item: dict
             for item in osr_datas:
                 time: int = item['ts']
@@ -43,12 +42,7 @@ class ArknightsDataAnalysis:
                     pool_id = PoolInfo.get_pool_id_by_info(real_pool, time)
 
                 osr: OperatorSearchRecord
-                osr, created = await database_manager.get_or_create(OperatorSearchRecord, account=self.account, time=time, defaults={'real_pool': real_pool, 'pool_id': pool_id})
-
-                if not created and osr.real_pool != real_pool:
-                    osr.pool = real_pool
-                    osr.pool_id = pool_id
-                    await database_manager.update(osr)
+                osr, created = await OperatorSearchRecord.aio_get_or_create(account=self.account, time=time, defaults={'real_pool': real_pool, 'pool_id': pool_id})
 
                 pool_info = PoolInfo.get_pool_info(pool_id)
                 is_up_pool = 'up_char_info' in pool_info
@@ -61,23 +55,27 @@ class ArknightsDataAnalysis:
                         rarity: int = char_item['rarity'] + 1
                         is_new: bool = char_item['isNew']
                         is_up: bool | None = name in pool_info['up_char_info'] if is_up_pool else None
+                        await OSROperator.aio_create(name=name, rarity=rarity, is_new=is_new, index=index, record=osr, is_up=is_up)
+                elif pool_id and osr.real_pool != real_pool:
+                    osr.real_pool = real_pool
+                    osr.pool_id = pool_id
+                    await osr.aio_save()
 
-                        await database_manager.create(OSROperator, name=name, rarity=rarity, is_new=is_new, index=index, record=osr, is_up=is_up)
-                elif pool_id and osr.real_pool != real_pool and is_up_pool:
-                    osr_operator: OSROperator
-                    for osr_operator in await database_manager.execute(OSROperator.select().where(OSROperator.record == osr)):
-                        osr_operator.is_up = name in pool_info['up_char_info']
-                        await database_manager.update(osr_operator)
+                    if is_up_pool:
+                        osr_operator: OSROperator
+                        for osr_operator in await OSROperator.select().where(OSROperator.record == osr).aio_execute():
+                            osr_operator.is_up = bool(osr_operator.name in pool_info['up_char_info'])
+                            await osr_operator.aio_save()
 
     async def fetch_diamond_record(self) -> None:
         last_time: int = 0
-        if await database_manager.count(DiamondRecord.select().where(DiamondRecord.account == self.account)):
-            record: DiamondRecord = await database_manager.get_or_none(DiamondRecord.select().where(DiamondRecord.account == self.account).order_by(DiamondRecord.operate_time.desc()).first())
+        if await DiamondRecord.select().where(DiamondRecord.account == self.account).aio_count():
+            record: DiamondRecord = (await DiamondRecord.select().where(DiamondRecord.account == self.account).order_by(DiamondRecord.operate_time.desc()).limit(1).aio_execute())[0]
             last_time = record.operate_time
 
         diamond_datas: list = await self.request.get_diamond_record(last_time)
 
-        async with database_manager.transaction():
+        async with database.aio_atomic():
             item: dict
             for item in diamond_datas:
                 time: int = item['ts']
@@ -90,8 +88,7 @@ class ArknightsDataAnalysis:
                     before: int = change_item['before']
                     after: int = change_item['after']
 
-                    await database_manager.get_or_create(
-                        DiamondRecord,
+                    await DiamondRecord.aio_get_or_create(
                         account=self.account,
                         operate_time=time,
                         defaults={
@@ -105,7 +102,7 @@ class ArknightsDataAnalysis:
     async def fetch_pay_record(self) -> None:
         pay_datas: list = await self.request.get_pay_record()
 
-        async with database_manager.transaction():
+        async with database.aio_atomic():
             item: dict
             for item in pay_datas:
                 order_id: str = item['orderId']
@@ -114,8 +111,7 @@ class ArknightsDataAnalysis:
                 pay_time: int = int(item['payTime'])
                 platform: Platform = Platform.get(item['platform'])
 
-                await database_manager.get_or_create(
-                    PayRecord,
+                await PayRecord.aio_get_or_create(
                     order_id=order_id,
                     defaults={
                         'name': name,
@@ -129,15 +125,14 @@ class ArknightsDataAnalysis:
     async def fetch_gift_record(self) -> None:
         gift_datas: list = await self.request.get_gift_record()
 
-        async with database_manager.transaction():
+        async with database.aio_atomic():
             item: dict
             for item in gift_datas:
                 time = item['ts']
                 name = item['giftName']
                 code = item['code']
 
-                await database_manager.get_or_create(
-                    GiftRecord,
+                await GiftRecord.aio_get_or_create(
                     account=self.account,
                     gift_time=time,
                     defaults={
@@ -159,10 +154,10 @@ class ArknightsDataAnalysis:
                 'available': True
             }
 
-            async with database_manager.transaction():
-                account, created = await database_manager.get_or_create(Account, uid=uid, defaults=updates)
+            async with database.aio_atomic():
+                account, created = await Account.aio_get_or_create(uid=uid, defaults=updates)
                 if not created and any(getattr(account, key) != value for key, value in updates.items()):
-                    await database_manager.execute(Account.update(**updates).where(Account.uid == uid))  # 更新数据
+                    await Account.update(**updates).where(Account.uid == uid).aio_execute()  # 更新数据
 
                 return cls(account, request), created
         except ValueError:
@@ -173,5 +168,5 @@ class ArknightsDataAnalysis:
         analyses: ArknightsDataAnalysis = (await cls.get_or_create_analysis(account.token, account.channel))[0]
         if not analyses:
             account.available = False
-            await database_manager.update(account)
+            await account.aio_save()
         return analyses

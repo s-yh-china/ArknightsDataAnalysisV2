@@ -1,0 +1,27 @@
+[project]
+name = "ArknightsDataAnalysisV2"
+version = "0.1.0"
+description = "ArknightsDataAnalysisV2"
+authors = [
+    { name = "violetc", email = "58360096+s-yh-china@users.noreply.github.com" },
+]
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+    "peewee-async[mysql]>=1.0.0",
+    "httpx>=0.27.2",
+    "aiohttp>=3.10.10",
+    "intervaltree>=3.1.0",
+    "python-jose>=3.3.0",
+    "bcrypt>=4.2.0",
+    "apscheduler>=3.10.4",
+    "aiosmtplib>=3.0.2",
+    "pillow>=10.4.0",
+    "aiocache>=0.12.3",
+]
+requires-python = ">=3.12,<3.13"
+readme = "README.md"
+license = { text = "AGPL-3" }
+
+
+[tool.pdm]
+distribution = false

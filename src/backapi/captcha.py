@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from api.captcha import CaptchaInfo
-from api.captcha import create_captcha_code, valid_captcha_code
-from api.utils import JustMsgModel
+from src.api.captcha import CaptchaInfo
+from src.api.captcha import create_captcha_code, valid_captcha_code
+from src.api.utils import JustMsgModel
 
 router = APIRouter(
     prefix="/api/captcha",

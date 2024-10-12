@@ -1,25 +1,38 @@
 import json
+
 from enum import Enum
 from typing import Any
 
-from peewee import DatabaseProxy, CharField, BooleanField, ForeignKeyField, IntegerField, TimestampField
+from peewee import CharField, BooleanField, ForeignKeyField, IntegerField, TimestampField, AutoField
 from playhouse.mysql_ext import JSONField
 from playhouse.shortcuts import ReconnectMixin
 
-from peewee_async import Manager, AioModel  # noqa
+from peewee_async import AioModel
 from peewee_async import PooledMySQLDatabase as AsyncPooledMySQLDatabase
 
-from api.datas import ConfigData
-from api.pydantic_models import UserConfig
+from src.api.datas import ConfigData
+from src.api.models import UserConfig
 
-database_proxy: DatabaseProxy = DatabaseProxy()
-database_manager = Manager(database_proxy)
+
+class ReconnectAsyncPooledMySQLDatabase(ReconnectMixin, AsyncPooledMySQLDatabase):
+    _instance = None
+
+    @classmethod
+    def get_db_instance(cls, *db_arg, **db_config):
+        if not cls._instance:
+            cls._instance = cls(*db_arg, **db_config, max_connections=100)
+        return cls._instance
+
+
+database = ReconnectAsyncPooledMySQLDatabase.get_db_instance(**ConfigData.get_mysql())
+database.set_allow_sync(False)
 
 
 class BaseModel(AioModel):
+    id = AutoField()
+
     class Meta:
-        database = database_proxy
-        objects = database_manager
+        database = database
 
 
 class EnumField(CharField):
@@ -56,16 +69,15 @@ class DBUser(BaseModel):
     username = CharField(max_length=20, unique=True)
     email = CharField(max_length=30, unique=True)
     hashed_password = CharField(max_length=60)
-    slat = CharField(max_length=32)
     user_config = UserConfigField()
     disabled = BooleanField(default=False)
 
 
 class AccountChannel(str, Enum):
-    def __new__(cls, _value: str, channel_id: int):
+    def __new__(cls, _value: str, _channel_id: int):
         _obj = str.__new__(cls, _value)
         _obj._value_ = _value
-        _obj.channel_id = channel_id
+        _obj.channel_id = _channel_id
         return _obj
 
     OFFICIAL = ('OFFICIAL', 1)
@@ -98,14 +110,15 @@ class OSROperator(BaseModel):
 
 
 class Platform(str, Enum):
-    def __new__(cls, _value: str, platform_id: int):
+    def __new__(cls, _value: str, _platform_id: int):
         _obj = str.__new__(cls, _value)
         _obj._value_ = _value
-        _obj.platform_id = platform_id
+        _obj.platform_id = _platform_id
         return _obj
 
     ANDROID = ('Android', 1)
     IOS = ('iOS', 2)
+    ALL = ('all', 3)
 
     @classmethod
     def get(cls, platform: int | str):
@@ -141,15 +154,5 @@ class GiftRecord(BaseModel):
     code = CharField()
 
 
-class ReconnectAsyncPooledMySQLDatabase(ReconnectMixin, AsyncPooledMySQLDatabase):
-    _instance = None
-
-    @classmethod
-    def get_db_instance(cls, *db_arg, **db_config):
-        if not cls._instance:
-            cls._instance = cls(*db_arg, **db_config, max_connections=100)
-        return cls._instance
-
-
-database_proxy.initialize(ReconnectAsyncPooledMySQLDatabase.get_db_instance(**ConfigData.get_mysql()))
-database_proxy.create_tables([DBUser, Account, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord, GiftRecord])
+with database.allow_sync():
+    database.create_tables([DBUser, Account, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord, GiftRecord])

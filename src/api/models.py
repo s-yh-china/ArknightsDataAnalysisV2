@@ -1,5 +1,3 @@
-# 这是一个特殊的文件 为了避免循环引用模型
-# 以及一些独立的模型
 from enum import Enum
 
 from pydantic import BaseModel
@@ -34,6 +32,6 @@ class PoolInfoModel(BaseModel):
     type: str
     start: int
     end: int
-    up_char_info: list[str] | None
-    limited_char_info: list[str] | None
-    weight_up_char_info: dict[str, int] | None
+    up_char_info: list[str] | None = None
+    limited_char_info: list[str] | None = None
+    weight_up_char_info: dict[str, int] | None = None

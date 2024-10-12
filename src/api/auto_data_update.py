@@ -1,16 +1,16 @@
 from asyncio import sleep
 
-from api.arknights_data_request import ArknightsDataRequest, create_request_by_token
-from api.arknights_data_analysis import ArknightsDataAnalysis
-from api.models import Account, GiftRecord, database_manager
-from api.datas import GiftCodeInfo
+from src.api.arknights_data_request import ArknightsDataRequest, create_request_by_token
+from src.api.arknights_data_analysis import ArknightsDataAnalysis
+from src.api.databases import Account, GiftRecord
+from src.api.datas import GiftCodeInfo
 
 
 async def update_all_accounts_data():
     print('update_all_accounts_data start')
     account_n = 0
     account: Account
-    for account in await database_manager.execute(Account.select().where(Account.available == True)):
+    for account in await Account.select().where(Account.available == True).aio_execute():
         if analysis := await ArknightsDataAnalysis.get_analysis(account):
             account_n += 1
             await analysis.fetch_data()
@@ -23,11 +23,11 @@ async def auto_get_gift():
         return
 
     account: Account
-    for account in await database_manager.execute(Account.select().where(Account.owner.is_null(False) & Account.available == True)):
+    for account in await Account.select().where(Account.owner.is_null(False) & Account.available == True).aio_execute():
         if not Account.owner.user_config.is_auto_gift:
             continue
 
-        used_gift_code = [record.code for record in await database_manager.execute(GiftRecord.select().where(GiftRecord.account == account))]
+        used_gift_code = [record.code for record in await GiftRecord.select().where(GiftRecord.account == account).aio_execute()]
         need_gift_code = [code for code in gift_code if code not in used_gift_code]
 
         if not need_gift_code:

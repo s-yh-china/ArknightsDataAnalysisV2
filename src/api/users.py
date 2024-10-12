@@ -1,16 +1,13 @@
-import os
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from jose import JWTError
-from passlib.context import CryptContext
 from pydantic import BaseModel
+from bcrypt import checkpw, hashpw, gensalt
 
-from api.models import DBUser
-from api.models import database_manager
-from api.pydantic_models import UserConfig
-from api.utils import decode_jwt
+from src.api.databases import DBUser
+from src.api.models import UserConfig
+from src.api.utils import decode_jwt
 
 
 class Token(BaseModel):
@@ -38,42 +35,38 @@ class UserInfo(UserBase):
 
 class UserInDB(UserInfo):
     hashed_password: str
-    slat: str
 
     class Config:
         from_attributes = True
 
     async def get_db(self) -> DBUser | None:
-        return await database_manager.get_or_none(DBUser, DBUser.username == self.username)
+        return await DBUser.aio_get_or_none(DBUser.username == self.username)
 
 
-password_context: CryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="api/users/login_password")
-
-
-def verify_password(plain_password: str, slat: str, hashed_password: str) -> bool:
-    return password_context.verify(plain_password + slat, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return checkpw(plain_password.encode(), hashed_password.encode())
 
 
 async def get_user(username: str) -> UserInDB | None:
-    user: DBUser = await database_manager.get_or_none(DBUser, username=username)
-    if user:
+    if user := await DBUser.aio_get_or_none(DBUser.username == username):
         return UserInDB(**user.__data__)
 
 
 async def get_user_email(email: str) -> UserInDB | None:
-    user: DBUser = await database_manager.get_or_none(DBUser, email=email)
-    if user:
+    if user := await DBUser.aio_get_or_none(DBUser.email == email):
         return UserInDB(**user.__data__)
 
 
-async def authenticate_user(username: str, password: str) -> UserInfo | bool:
+async def authenticate_user(username: str, password: str) -> UserInfo | None:
     user: UserInDB | None = await get_user(username)
-    if not user:
-        return False
-    if not verify_password(password, user.slat, user.hashed_password):
-        return False
+    if user is None:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
     return user
+
+
+oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="api/users/login_password")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
@@ -104,22 +97,17 @@ async def get_current_active_user(current_user: UserInfo = Depends(get_current_u
     return current_user
 
 
-def get_password_hash(password: str, slat: str) -> str:
-    return password_context.hash(password + slat)
-
-
-def get_random_slat() -> str:
-    return os.urandom(16).hex()
+def get_password_hash(password: str) -> str:
+    return hashpw(password.encode(), gensalt()).decode()
 
 
 async def create_user(username: str, password: str, email: str) -> UserInfo:
-    slat: str = get_random_slat()
-    password = get_password_hash(password, slat)
-    await database_manager.create(DBUser, username=username, hashed_password=password, email=email, slat=slat, user_config=UserConfig().model_dump_json())
+    password = get_password_hash(password)
+    await DBUser.aio_create(username=username, hashed_password=password, email=email, user_config=UserConfig().model_dump_json())
     return await get_user(username)
 
 
-async def modify_user_config(user: UserInDB, config: UserConfig):
+async def modify_user_config(user: UserInDB, config: UserConfig) -> None:
     db_user = await user.get_db()
     db_user.user_config = config.model_dump_json()
-    await database_manager.update(db_user)
+    await db_user.aio_save()

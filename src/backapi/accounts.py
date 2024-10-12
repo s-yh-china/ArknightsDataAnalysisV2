@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, status
 
-from api.users import get_current_active_user, UserBase
-from api.accounts import AccountInfo, AccountInDB, AccountCreate, AccountRefresh
-from api.accounts import get_accounts, get_account_by_token, add_account_to_user, get_account_by_uid, del_account_by_uid
-from api.accounts import refresh_account_data
-from api.utils import JustMsgModel
-from api.captcha import valid_captcha_code
+from src.api.users import get_current_active_user, UserBase, UserInDB
+from src.api.accounts import AccountInfo, AccountInDB, AccountCreate, AccountRefresh
+from src.api.accounts import get_accounts, get_account_by_token, add_account_to_user, get_account_by_uid, del_account_by_uid
+from src.api.accounts import refresh_account_data
+from src.api.utils import JustMsgModel
+from src.api.captcha import valid_captcha_code
 
 router = APIRouter(
     prefix="/api/accounts",
@@ -25,7 +25,7 @@ async def create_account(account: AccountInfo = Depends(get_account_by_token)):
 
 
 @router.post("/add_to_user", response_model=JustMsgModel)
-async def add_account(account: AccountCreate, current_user: UserBase = Depends(get_current_active_user)):
+async def add_account(account: AccountCreate, current_user: UserInDB = Depends(get_current_active_user)):
     await add_account_to_user(account, current_user)
     return JustMsgModel()
 

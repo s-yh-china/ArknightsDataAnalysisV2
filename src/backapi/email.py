@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from api.email import EmailVerifyInfo, EmailVerifyToken
-from api.email import email_verify
+from src.api.email import EmailVerifyInfo, EmailVerifyToken
+from src.api.email import email_verify
 
 router = APIRouter(
     prefix="/api/email",

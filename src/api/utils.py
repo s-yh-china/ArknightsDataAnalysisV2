@@ -1,4 +1,4 @@
-import secrets
+from secrets import token_urlsafe
 from typing import cast, TypeVar
 
 import aiohttp
@@ -7,7 +7,7 @@ from datetime import timedelta, timezone, datetime
 from pydantic import BaseModel
 from jose import jwt
 
-from api.datas import ConfigData
+from src.api.datas import ConfigData
 
 
 class JustMsgModel(BaseModel):
@@ -28,20 +28,20 @@ class AsyncRequest:
 
     async def get(self, url: str) -> dict[str, object]:
         async with self._session.get(url) as response:
-            if response.status % 100 == 2:
+            if response.status / 100 == 2:
                 return cast(dict[str, object], await response.json())
             else:
                 raise ValueError(f'Response {url} status code is {response.status}')
 
     async def post_json(self, url: str, json_data: dict[str, object]) -> dict[str, object]:
         async with self._session.post(url, json=json_data) as response:
-            if response.status % 100 == 2:
+            if response.status / 100 == 2:
                 return cast(dict[str, object], await response.json())
             else:
                 raise ValueError(f'Response {url} status code is {response.status}')
 
     async def post_json_with_csrf(self, url: str, json_data: dict[str, object]) -> dict[str, object]:
-        token = secrets.token_urlsafe(24)
+        token = token_urlsafe(24)
         headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
             'x-csrf-token': token,
@@ -49,7 +49,7 @@ class AsyncRequest:
             'content-type': 'application/json;charset=UTF-8'
         }
         async with self._session.post(url, json=json_data, headers=headers) as response:
-            if response.status % 100 == 2:
+            if response.status / 100 == 2:
                 return cast(dict[str, object], await response.json())
             else:
                 raise ValueError(f'Response {url} status code is {response.status}')

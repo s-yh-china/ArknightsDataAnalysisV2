@@ -1,8 +1,8 @@
 import asyncio
 
-from api.models import Account, AccountChannel, DBUser, database_manager
-from api.users import UserBase, get_current_active_user
-from api.arknights_data_analysis import ArknightsDataAnalysis
+from src.api.databases import Account, AccountChannel, DBUser, database
+from src.api.users import UserBase, UserInDB, get_current_active_user
+from src.api.arknights_data_analysis import ArknightsDataAnalysis
 
 from fastapi import HTTPException, status, Depends
 from pydantic import BaseModel
@@ -25,7 +25,7 @@ class AccountInDB(AccountInfo):
         from_attributes = True
 
     async def get_db(self) -> Account | None:
-        return await database_manager.get_or_none(Account, Account.uid == self.uid)
+        return await Account.aio_get_or_none(Account.uid == self.uid)
 
 
 class AccountRefresh(AccountBase):
@@ -40,7 +40,7 @@ class AccountCreate(BaseModel):
 
 async def get_accounts(user: UserBase) -> list[AccountInDB]:
     accounts = []
-    for account in await database_manager.execute(Account.select().join_from(Account, DBUser).where(DBUser.username == user.username)):
+    for account in await Account.select().join_from(Account, DBUser).where(DBUser.username == user.username).aio_execute():
         await ArknightsDataAnalysis.get_analysis(account)
         accounts.append(AccountInDB(**account.__data__))
     return accounts
@@ -61,12 +61,12 @@ async def get_account_by_token(account_create: AccountCreate) -> AccountInDB:
         )
 
 
-async def add_account_to_user(account_create: AccountCreate, user: UserBase):
-    account: Account = await database_manager.get_or_none(Account, token=account_create.token)
-    dbuser: DBUser = await database_manager.get_or_none(DBUser, username=user.username)
+async def add_account_to_user(account_create: AccountCreate, user: UserInDB):
+    dbuser: DBUser = await user.get_db()
+    account: Account = await Account.aio_get_or_none(Account.token == account_create.token)
     if account and dbuser:
         account.owner = dbuser
-        await database_manager.update(account)
+        await account.aio_save()
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -75,18 +75,19 @@ async def add_account_to_user(account_create: AccountCreate, user: UserBase):
 
 
 async def get_account_by_uid(account: AccountBase, user: UserBase = Depends(get_current_active_user)) -> AccountInDB:
-    db_account: Account = await database_manager.get_or_none(Account, uid=account.uid)
+    db_account: Account = await Account.aio_get_or_none(Account.uid == account.uid)
     if not db_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account Not Found"
         )
 
-    if user.username != db_account.owner.username:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not Accepted"
-        )
+    with database.allow_sync():
+        if user.username != db_account.owner.username:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not Accepted"
+            )
 
     return AccountInDB(**db_account.__data__)
 
@@ -97,7 +98,7 @@ async def del_account_by_uid(account: AccountInDB):
         db_account.owner = None
         db_account.token = ''
         db_account.available = False
-        await database_manager.update(db_account)
+        await db_account.aio_save()
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
