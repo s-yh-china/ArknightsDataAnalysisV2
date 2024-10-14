@@ -277,7 +277,7 @@ async def compute_site_statistics() -> dict:
     for pay_record in pay_records:
         total_pay_money += pay_record.amount / 100
 
-    diamond_info = {
+    diamond_info: dict = {
         'now': 0,
         'total_use': 0,
         'total_get': 0,
@@ -305,10 +305,10 @@ async def compute_site_statistics() -> dict:
                 diamond_info['type_use'][diamond_record.operation]['type'] = diamond_record.operation
                 diamond_info['type_use'][diamond_record.operation]['number'] -= change
 
-    diamond_info['type_get'] = list(sorted(diamond_info['type_get'].values(), key=lambda x: x['number'], reverse=True))  # noqa
-    diamond_info['type_use'] = list(sorted(diamond_info['type_use'].values(), key=lambda x: x['number'], reverse=True))  # noqa
+    diamond_info['type_get'] = list(sorted(diamond_info['type_get'].values(), key=lambda x: x['number'], reverse=True))
+    diamond_info['type_use'] = list(sorted(diamond_info['type_use'].values(), key=lambda x: x['number'], reverse=True))
 
-    osr_info = {
+    osr_info: dict = {
         'osr_number_pool': defaultdict[str, int | dict[str, int]](int),
         'osr_number_month': defaultdict(int),
         'osr_lucky': {
@@ -334,12 +334,11 @@ async def compute_site_statistics() -> dict:
         if pool_info['type'] == 'UNKNOWN':
             continue
 
-        pool_name = pool_info.get('name')
         operators = await OSROperator.select().where(OSROperator.record == record).aio_execute()
         operators_number = len(operators)
 
         osr_info['osr_number_month'][datetime.fromtimestamp(record.time).strftime('%Y-%m')] += operators_number
-        osr_info['osr_number_pool'][pool_name] += operators_number
+        osr_info['osr_number_pool'][pool_id] += operators_number
         osr_info['osr_number_pool']['total']['all'] += operators_number
 
         operator: OSROperator
@@ -352,13 +351,13 @@ async def compute_site_statistics() -> dict:
             osr_info['osr_lucky'][rarity] += 1
 
             if rarity == '6' and 'up_char_info' in pool_info:
-                if pool_name not in osr_info['osr_not_up']:
-                    osr_info['osr_not_up'][pool_name] = 0
+                if pool_id not in osr_info['osr_not_up']:
+                    osr_info['osr_not_up'][pool_id] = 0
 
-                osr_info['osr_six'][pool_name] += 1
+                osr_info['osr_six'][pool_id] += 1
                 osr_info['osr_six']['total'] += 1
                 if not operator.is_up:
-                    osr_info['osr_not_up'][pool_name] += 1
+                    osr_info['osr_not_up'][pool_id] += 1
                     osr_info['osr_not_up']['total'] += 1
 
     for r in map(str, range(3, 7)):
@@ -370,7 +369,7 @@ async def compute_site_statistics() -> dict:
     for osr_not_up_pool in osr_info['osr_not_up']:
         osr_info['osr_not_up_avg'][osr_not_up_pool] = osr_info['osr_not_up'][osr_not_up_pool] / osr_info['osr_six'][osr_not_up_pool]
 
-    osr_info['osr_number_month'] = dict(reversed(osr_info['osr_number_month'].items()))  # noqa
+    osr_info['osr_number_month'] = dict(reversed(osr_info['osr_number_month'].items()))
 
     statistics_info = {
         'account_info': account_info,

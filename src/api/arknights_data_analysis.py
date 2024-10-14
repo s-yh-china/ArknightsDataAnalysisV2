@@ -1,8 +1,35 @@
-from typing import Union
+import asyncio
+from typing import Self
 
 from src.api.arknights_data_request import ArknightsDataRequest, create_request_by_token
 from src.api.databases import Account, AccountChannel, OperatorSearchRecord, OSROperator, DiamondRecord, Platform, PayRecord, GiftRecord, database
 from src.api.datas import PoolInfo
+
+
+async def fix_osr_pool(account: Account) -> None:
+    async with database.aio_atomic():
+        records = await (OperatorSearchRecord
+                         .select()
+                         .where(OperatorSearchRecord.account == account)
+                         .where(OperatorSearchRecord.pool_id.is_null())
+                         .aio_execute())
+        record: OperatorSearchRecord
+
+        async def fix_record(record: OperatorSearchRecord) -> None:
+            if record.real_pool is None:
+                return  # TODO 推测未知卡池
+            pool_id = PoolInfo.get_pool_id_by_info(record.real_pool, record.time)
+            record.pool_id = pool_id
+            await record.aio_save()
+
+            pool_info = PoolInfo.get_pool_info(pool_id)
+            if 'up_char_info' in pool_info:
+                osr_operator: OSROperator
+                for osr_operator in await OSROperator.select().where(OSROperator.record == record).aio_execute():
+                    osr_operator.is_up = bool(osr_operator.name in pool_info['up_char_info'])
+                    await osr_operator.aio_save()
+
+        await asyncio.gather(*(fix_record(record) for record in records))
 
 
 class ArknightsDataAnalysis:
@@ -142,7 +169,7 @@ class ArknightsDataAnalysis:
                 )
 
     @classmethod
-    async def get_or_create_analysis(cls, token: str, channel: AccountChannel) -> tuple['ArknightsDataAnalysis', bool] | tuple[None, bool]:
+    async def get_or_create_analysis(cls, token: str, channel: AccountChannel) -> tuple[Self | None, bool]:
         request: ArknightsDataRequest = create_request_by_token(token, channel)
         try:
             user_info: dict = await request.get_user_info()
@@ -158,13 +185,12 @@ class ArknightsDataAnalysis:
                 account, created = await Account.aio_get_or_create(uid=uid, defaults=updates)
                 if not created and any(getattr(account, key) != value for key, value in updates.items()):
                     await Account.update(**updates).where(Account.uid == uid).aio_execute()  # 更新数据
-
                 return cls(account, request), created
         except ValueError:
             return None, True
 
     @classmethod
-    async def get_analysis(cls, account: Account) -> Union['ArknightsDataAnalysis', None]:
+    async def get_analysis(cls, account: Account) -> Self | None:
         analyses: ArknightsDataAnalysis = (await cls.get_or_create_analysis(account.token, account.channel))[0]
         if not analyses:
             account.available = False

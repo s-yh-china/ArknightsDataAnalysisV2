@@ -1,5 +1,5 @@
 from secrets import token_urlsafe
-from typing import cast, TypeVar
+from typing import cast
 
 import aiohttp
 
@@ -54,10 +54,8 @@ class AsyncRequest:
             else:
                 raise ValueError(f'Response {url} status code is {response.status}')
 
-    T = TypeVar("T")
-
     @staticmethod
-    def get_response(__type: type[T], response: dict[str, object]) -> T:
+    def get_response[T](__type: type[T], response: dict[str, object]) -> T:
         return cast(__type, response.get('data'))
 
 

@@ -30,7 +30,7 @@ class AccountInDB(AccountInfo):
 
 class AccountRefresh(AccountBase):
     force: bool
-    token: str = None
+    token: str | None = None
 
 
 class AccountCreate(BaseModel):
