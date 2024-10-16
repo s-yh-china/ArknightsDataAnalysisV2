@@ -174,25 +174,25 @@ async def move():
             old_osrs = await OperatorSearchRecord.select(OperatorSearchRecord, OSRPool).join(OSRPool).where(OperatorSearchRecord.account == account).aio_execute()
             await asyncio.wait([asyncio.create_task(old_osr_to_new(new_account, old_osr)) for old_osr in old_osrs])
             logger.info(f'Account({account.uid}) OperatorSearchRecord moved')
-        except ValueError | AssertionError:
+        except (ValueError, AssertionError):
             logger.info(f'Account({account.uid}) no OperatorSearchRecord')
         try:
             old_pays = await PayRecord.select().where(PayRecord.account == account).aio_execute()
             await asyncio.wait([asyncio.create_task(old_pay_to_new(new_account, old_pay)) for old_pay in old_pays])
             logger.info(f'Account({account.uid}) PayRecord moved')
-        except ValueError | AssertionError:
+        except (ValueError, AssertionError):
             logger.info(f'Account({account.uid}) no PayRecord')
         try:
             old_diamonds = await DiamondRecord.select().where(DiamondRecord.account == account).aio_execute()
             await asyncio.wait([asyncio.create_task(old_diamond_to_new(new_account, old_diamond)) for old_diamond in old_diamonds])
             logger.info(f'Account({account.uid}) DiamondRecord moved')
-        except ValueError | AssertionError:
+        except (ValueError, AssertionError):
             logger.info(f'Account({account.uid}) no DiamondRecord')
         try:
             old_gifts = await GiftRecord.select().where(GiftRecord.account == account).aio_execute()
             await asyncio.wait((asyncio.create_task(old_gift_to_new(new_account, old_gift)) for old_gift in old_gifts))
             logger.info(f'Account({account.uid}) GiftRecord moved')
-        except ValueError | AssertionError:
+        except (ValueError, AssertionError):
             logger.info(f'Account({account.uid}) no GiftRecord')
 
     await asyncio.wait([asyncio.create_task(pre_account_move(old_account, new_account)) for old_account, new_account in new_accounts])
