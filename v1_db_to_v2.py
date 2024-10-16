@@ -105,6 +105,10 @@ async def move():
         return new_account
 
     old_accounts = await Account.select().aio_execute()
+    if len(old_accounts) < 1:
+        print("?")
+        exit(1)
+
     new_accounts = await asyncio.gather(*(old_account_to_new(old_account) for old_account in old_accounts))
     logger.info(f'All Account({len(new_accounts)}) moved')
 
@@ -171,20 +175,36 @@ async def move():
 
     async def pre_account_move(account: NewAccount):
         old_osrs = await OperatorSearchRecord.select(OperatorSearchRecord, OSRPool).join(OSRPool).where(OperatorSearchRecord.account == account).aio_execute()
-        await asyncio.wait([asyncio.create_task(old_osr_to_new(account, old_osr)) for old_osr in old_osrs])
-        logger.info(f'Account({account.uid}) OperatorSearchRecord moved')
+        if tasks := [asyncio.create_task(old_osr_to_new(account, old_osr)) for old_osr in old_osrs]:
+            await asyncio.wait(tasks)
+            logger.info(f'Account({account.uid}) OperatorSearchRecord moved')
+        else:
+            logger.info(f'Account({account.uid}) no OperatorSearchRecord')
+
         old_pays = await PayRecord.select().where(PayRecord.account == account).aio_execute()
-        await asyncio.wait([asyncio.create_task(old_pay_to_new(account, old_pay)) for old_pay in old_pays])
-        logger.info(f'Account({account.uid}) PayRecord moved')
+        if tasks := [asyncio.create_task(old_pay_to_new(account, old_pay)) for old_pay in old_pays]:
+            await asyncio.wait(tasks)
+            logger.info(f'Account({account.uid}) PayRecord moved')
+        else:
+            logger.info(f'Account({account.uid}) no PayRecord')
+
         old_diamonds = await DiamondRecord.select().where(DiamondRecord.account == account).aio_execute()
-        await asyncio.wait([asyncio.create_task(old_diamond_to_new(account, old_diamond)) for old_diamond in old_diamonds])
-        logger.info(f'Account({account.uid}) DiamondRecord moved')
+        if tasks := [asyncio.create_task(old_diamond_to_new(account, old_diamond)) for old_diamond in old_diamonds]:
+            await asyncio.wait(tasks)
+            logger.info(f'Account({account.uid}) DiamondRecord moved')
+        else:
+            logger.info(f'Account({account.uid}) no DiamondRecord')
+
         old_gifts = await GiftRecord.select().where(GiftRecord.account == account).aio_execute()
-        await asyncio.wait((asyncio.create_task(old_gift_to_new(account, old_gift)) for old_gift in old_gifts))
-        logger.info(f'Account({account.uid}) GiftRecord moved')
+        if tasks := [asyncio.create_task(old_gift_to_new(account, old_gift)) for old_gift in old_gifts]:
+            await asyncio.wait(tasks)
+            logger.info(f'Account({account.uid}) GiftRecord moved')
+        else:
+            logger.info(f'Account({account.uid}) no GiftRecord')
+
+        logger.info(f'Account({account.uid}) finished')
 
     await asyncio.wait([asyncio.create_task(pre_account_move(new_account)) for new_account in new_accounts])
-    logger.info('wait database')
 
 
 if __name__ == '__main__':
