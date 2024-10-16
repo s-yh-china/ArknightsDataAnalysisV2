@@ -188,4 +188,6 @@ async def move():
 
 
 if __name__ == '__main__':
-    asyncio.run(move())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(move())
+    loop.close()
