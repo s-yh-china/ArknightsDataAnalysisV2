@@ -173,7 +173,7 @@ async def move():
             )
 
     async def pre_account_move(account: NewAccount):
-        old_osrs = await OperatorSearchRecord.select().where(OperatorSearchRecord.account == account).aio_execute()
+        old_osrs = await OperatorSearchRecord.select(OperatorSearchRecord, OSRPool).join(OSRPool).where(OperatorSearchRecord.account == account).aio_execute()
         await asyncio.gather(*(old_osr_to_new(account, old_osr) for old_osr in old_osrs))
         old_pays = await PayRecord.select().where(PayRecord.account == account).aio_execute()
         await asyncio.gather(*(old_pay_to_new(account, old_pay) for old_pay in old_pays))
