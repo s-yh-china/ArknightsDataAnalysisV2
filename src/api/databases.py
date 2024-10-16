@@ -125,8 +125,8 @@ class Platform(str, Enum):
         return _obj
 
     ANDROID = ('Android', 1)
-    IOS = ('iOS', 2)
-    ALL = ('all', 3)
+    IOS = ('iOS', 0)
+    ALL = ('all', 2)
 
     @classmethod
     def get(cls, platform: int | str):

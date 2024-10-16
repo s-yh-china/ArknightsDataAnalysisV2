@@ -157,7 +157,7 @@ async def move():
             await NewDiamondRecord.aio_create(
                 account=account,
                 operation=old_diamond.operation,
-                platform=Platform.get(int(old_diamond.platform)),  # noqa
+                platform=Platform.get(old_diamond.platform),  # noqa
                 operate_time=old_diamond.operate_time,
                 before=old_diamond.before,
                 after=old_diamond.after
@@ -181,7 +181,6 @@ async def move():
         await asyncio.gather(*(old_diamond_to_new(account, old_diamond) for old_diamond in old_diamonds))
         old_gifts = await GiftRecord.select().where(GiftRecord.account == account).aio_execute()
         await asyncio.gather(*(old_gift_to_new(account, old_gift) for old_gift in old_gifts))
-        print(f'Account({account.uid}) data moved')
 
     await asyncio.gather(*(pre_account_move(new_account) for new_account in new_accounts))
 
