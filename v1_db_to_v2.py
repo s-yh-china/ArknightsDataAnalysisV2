@@ -190,9 +190,8 @@ async def move():
         await asyncio.gather(*(old_gift_to_new(account, old_gift) for old_gift in old_gifts))
         logger.info(f'Account({account.uid}) GiftRecord moved')
 
-    await asyncio.gather(*(pre_account_move(new_account) for new_account in new_accounts))
+    await asyncio.wait(*(pre_account_move(new_account) for new_account in new_accounts))
     logger.info('wait database')
-    await asyncio.sleep(360)  # 你就等吧
 
 
 if __name__ == '__main__':
