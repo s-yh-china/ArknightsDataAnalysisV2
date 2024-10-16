@@ -83,6 +83,14 @@ class AccountChannel(str, Enum):
     OFFICIAL = ('OFFICIAL', 1)
     BILIBILI = ('BILIBILI', 2)
 
+    @classmethod
+    def get(cls, channel: int | str):
+        member: AccountChannel
+        for member in cls:
+            if member.value == channel or member.channel_id == channel:
+                return member
+        raise ValueError(f"No member with value or name '{channel}' in {cls.__name__}")
+
 
 class Account(BaseModel):
     uid = CharField(max_length=20, unique=True)
@@ -102,11 +110,11 @@ class OperatorSearchRecord(BaseModel):
 
 class OSROperator(BaseModel):
     record = ForeignKeyField(OperatorSearchRecord, backref='operators')
+    index = IntegerField()
     name = CharField(max_length=10)
     rarity = IntegerField()
     is_new = BooleanField()
     is_up = BooleanField(null=True)
-    index = IntegerField()
 
 
 class Platform(str, Enum):
