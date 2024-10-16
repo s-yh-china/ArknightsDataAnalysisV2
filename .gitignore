@@ -141,6 +141,3 @@ cache
 
 # pdm
 .pdm-python
-
-# data
-data/pool_info.json

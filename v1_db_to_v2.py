@@ -184,3 +184,7 @@ async def move():
         print(f'Account({account.uid}) data moved')
 
     await asyncio.gather(*(pre_account_move(new_account) for new_account in new_accounts))
+
+
+if __name__ == '__main__':
+    asyncio.run(move())
