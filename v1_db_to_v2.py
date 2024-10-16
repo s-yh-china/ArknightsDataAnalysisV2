@@ -175,28 +175,28 @@ async def move():
 
     async def pre_account_move(account: NewAccount):
         old_osrs = await OperatorSearchRecord.select(OperatorSearchRecord, OSRPool).join(OSRPool).where(OperatorSearchRecord.account == account).aio_execute()
-        if tasks := [asyncio.create_task(old_osr_to_new(account, old_osr)) for old_osr in old_osrs]:
+        if tasks := list([asyncio.create_task(old_osr_to_new(account, old_osr)) for old_osr in old_osrs]):
             await asyncio.wait(tasks)
             logger.info(f'Account({account.uid}) OperatorSearchRecord moved')
         else:
             logger.info(f'Account({account.uid}) no OperatorSearchRecord')
 
         old_pays = await PayRecord.select().where(PayRecord.account == account).aio_execute()
-        if tasks := [asyncio.create_task(old_pay_to_new(account, old_pay)) for old_pay in old_pays]:
+        if tasks := list([asyncio.create_task(old_pay_to_new(account, old_pay)) for old_pay in old_pays]):
             await asyncio.wait(tasks)
             logger.info(f'Account({account.uid}) PayRecord moved')
         else:
             logger.info(f'Account({account.uid}) no PayRecord')
 
         old_diamonds = await DiamondRecord.select().where(DiamondRecord.account == account).aio_execute()
-        if tasks := [asyncio.create_task(old_diamond_to_new(account, old_diamond)) for old_diamond in old_diamonds]:
+        if tasks := list([asyncio.create_task(old_diamond_to_new(account, old_diamond)) for old_diamond in old_diamonds]):
             await asyncio.wait(tasks)
             logger.info(f'Account({account.uid}) DiamondRecord moved')
         else:
             logger.info(f'Account({account.uid}) no DiamondRecord')
 
         old_gifts = await GiftRecord.select().where(GiftRecord.account == account).aio_execute()
-        if tasks := [asyncio.create_task(old_gift_to_new(account, old_gift)) for old_gift in old_gifts]:
+        if tasks := list([asyncio.create_task(old_gift_to_new(account, old_gift)) for old_gift in old_gifts]):
             await asyncio.wait(tasks)
             logger.info(f'Account({account.uid}) GiftRecord moved')
         else:
