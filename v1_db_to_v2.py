@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from datetime import datetime
 
@@ -18,6 +19,9 @@ old_database_config = {
     'database': '',
     'port': 3306
 }
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 old_database = ReconnectAsyncPooledMySQLDatabase(**old_database_config)
 old_database.set_allow_sync(False)
@@ -105,7 +109,7 @@ async def move():
 
     old_accounts = await Account.select().aio_execute()
     new_accounts = await asyncio.gather(*(old_account_to_new(old_account) for old_account in old_accounts))
-    print(f'All Account({len(new_accounts)}) moved')
+    logger.info(f'All Account({len(new_accounts)}) moved')
 
     async def old_osr_to_new(account: NewAccount | None, old_osr: OperatorSearchRecord):
         if account is None:
@@ -175,14 +179,20 @@ async def move():
     async def pre_account_move(account: NewAccount):
         old_osrs = await OperatorSearchRecord.select(OperatorSearchRecord, OSRPool).join(OSRPool).where(OperatorSearchRecord.account == account).aio_execute()
         await asyncio.gather(*(old_osr_to_new(account, old_osr) for old_osr in old_osrs))
+        logger.info(f'Account({account.uid}) OperatorSearchRecord moved')
         old_pays = await PayRecord.select().where(PayRecord.account == account).aio_execute()
         await asyncio.gather(*(old_pay_to_new(account, old_pay) for old_pay in old_pays))
+        logger.info(f'Account({account.uid}) PayRecord moved')
         old_diamonds = await DiamondRecord.select().where(DiamondRecord.account == account).aio_execute()
         await asyncio.gather(*(old_diamond_to_new(account, old_diamond) for old_diamond in old_diamonds))
+        logger.info(f'Account({account.uid}) DiamondRecord moved')
         old_gifts = await GiftRecord.select().where(GiftRecord.account == account).aio_execute()
         await asyncio.gather(*(old_gift_to_new(account, old_gift) for old_gift in old_gifts))
+        logger.info(f'Account({account.uid}) GiftRecord moved')
 
     await asyncio.gather(*(pre_account_move(new_account) for new_account in new_accounts))
+    logger.info('wait database')
+    await asyncio.sleep(360)  # 你就等吧
 
 
 if __name__ == '__main__':
