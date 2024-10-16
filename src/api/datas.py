@@ -108,6 +108,7 @@ class PoolInfo(JsonData):
                 return '联合行动'
             case '进攻-防守-战术交汇':
                 return '进攻·防守·战术交汇'
+        return real_name
 
 
 class GiftCodeInfo(JsonData):
