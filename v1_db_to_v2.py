@@ -113,8 +113,8 @@ async def move():
             print(f'OperatorSearchRecord({old_osr.id}) cant found account')
             return
 
-        real_pool: str | None = old_osr.pool.name
-        if old_osr.pool.name == '未知卡池':
+        real_pool: str | None = PoolInfo.pool_name_fix(old_osr.pool.name)
+        if real_pool == '未知寻访':
             real_pool = None
             pool_id = None
         else:

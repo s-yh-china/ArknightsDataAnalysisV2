@@ -60,7 +60,7 @@ class ArknightsDataAnalysis:
             for item in osr_datas:
                 time: int = item['ts']
                 chars: list = item['chars']
-                real_pool: str | None = item['pool']
+                real_pool: str | None = PoolInfo.pool_name_fix(item['pool'])
                 pool_id: str | None
                 if real_pool == '未知卡池':
                     real_pool = None

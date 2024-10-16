@@ -35,7 +35,7 @@ async def __gacha_data_import(data: dict[str, dict[str, str | list[list[str | in
         for time, item in data.items():
             time: int = int(time)
             chars: list[list[str | int]] = item.get('c')
-            real_pool: str | None = item.get('p')
+            real_pool: str | None = PoolInfo.pool_name_fix(item.get('p'))
             pool_id: str | None
             if real_pool == '未知卡池':
                 real_pool = None

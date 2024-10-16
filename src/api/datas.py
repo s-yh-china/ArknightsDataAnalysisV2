@@ -96,10 +96,18 @@ class PoolInfo(JsonData):
         match pool_info['type']:
             case 'LIMITED' | 'LINKAGE' | 'ATTAIN' | 'CLASSIC_ATTAIN':
                 return pool_info['name']
-            case 'SINGLE' | 'NORMAL':
+            case 'SINGLE' | 'NORMAL' | 'SPECIAL':
                 return '标准寻访'
             case 'CLASSIC' | 'FESCLASSIC':
                 return '中坚寻访'
+
+    @staticmethod
+    def pool_name_fix(real_name: str) -> str:  # 鹰角网络???
+        match real_name:
+            case '【联合行动】特选干员定向寻访':
+                return '联合行动'
+            case '进攻-防守-战术交汇':
+                return '进攻·防守·战术交汇'
 
 
 class GiftCodeInfo(JsonData):
