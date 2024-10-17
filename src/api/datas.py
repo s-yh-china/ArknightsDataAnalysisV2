@@ -50,10 +50,11 @@ class PoolInfo(JsonData):
 
     def update_data(self) -> None:
         try:
-            type(self).data = httpx.get('').json()  # TODO 加上网址
+            type(self).data = httpx.get(ConfigData.get_analysis()['pool_info_url']).json()
         except Exception as e:
             print(f'Update PoolInfo Error: {e}')
         super().update_data()
+        self.load_data()
 
     @classmethod
     def get_all_pools(cls) -> dict[str, dict[str, str | int | dict[str, int] | list[str]]]:
@@ -129,7 +130,7 @@ class GiftCodeInfo(JsonData):
 
 class ConfigData(JsonData):
     data: dict = {
-        'version': '0.1.0',
+        'version': '0.1.1',
         'safe': {
             'SECRET_KEY': os.urandom(32).hex(),
             'ALGORITHM': 'HS256',
@@ -154,8 +155,10 @@ class ConfigData(JsonData):
             'link': ''
         },
         'analysis': {
-            'update_time': '0 4 * * *',
-            'auto_gift': '0 5 * * *'
+            'update_time': '20 4 * * *',
+            'auto_gift': '0 5 * * *',
+            'pool_info_update': '15 4 * * *',
+            'pool_info_url': 'https://raw.githubusercontent.com/s-yh-china/ArknightsGachaData/refs/heads/master/data/pool_info.json'
         },
         'mysql': {
             'host': 'localhost',
@@ -185,6 +188,10 @@ class ConfigData(JsonData):
     def get_user(cls):
         return cls.data['user']
 
+    @classmethod
+    def get_analysis(cls):
+        return cls.data['analysis']
+
     def update_data(self) -> None:
         super().update_data()
         print('Need Update Config')
@@ -193,5 +200,5 @@ class ConfigData(JsonData):
 
 # init
 ConfigData()
-PoolInfo()
+PoolInfo().update_data()
 GiftCodeInfo()
