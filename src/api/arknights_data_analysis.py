@@ -4,6 +4,7 @@ from typing import Self
 from src.api.arknights_data_request import ArknightsDataRequest, create_request_by_token
 from src.api.databases import Account, AccountChannel, OperatorSearchRecord, OSROperator, DiamondRecord, Platform, PayRecord, GiftRecord, database
 from src.api.datas import PoolInfo
+from src.logger import logger
 
 
 async def fix_osr_pool(account: Account) -> None:
@@ -37,14 +38,16 @@ class ArknightsDataAnalysis:
         self.account: Account = account
         self.request: ArknightsDataRequest = request
 
-    async def fetch_data(self, force: bool = False) -> None:
+    async def fetch_data(self, force: bool = False) -> bool:
         try:
             await self.fetch_osr(force)
             await self.fetch_diamond_record()
             await self.fetch_pay_record()
             await self.fetch_gift_record()
         except ValueError as e:
-            print(f'ERROR::{e}')
+            logger.warning(f'Fetch Data error::{e}')
+            return False
+        return True
 
     async def fetch_osr(self, force: bool = False) -> None:
         last_time: int = 0

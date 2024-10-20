@@ -46,7 +46,7 @@ async def send_email(to_address: str, token: str):
     <p>如果您没有提出这个请求，您可以忽略这封邮件。</p>
     </body>
     </html>
-    """
+    """  # TODO custom
     message.add_alternative(html_content, subtype='html')
 
     await aiosmtplib.send(

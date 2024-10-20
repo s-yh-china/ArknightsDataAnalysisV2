@@ -1,6 +1,5 @@
 from typing import cast, override
 from urllib.parse import quote
-
 from abc import ABC, abstractmethod
 
 from src.api.databases import AccountChannel

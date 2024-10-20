@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any
 
 from peewee import CharField, BooleanField, ForeignKeyField, IntegerField, TimestampField, AutoField
+from playhouse.migrate import MySQLMigrator, migrate
 from playhouse.mysql_ext import JSONField
 from playhouse.shortcuts import ReconnectMixin
 
@@ -162,5 +163,12 @@ class GiftRecord(BaseModel):
     code = CharField()
 
 
+def migrator_database(version: str, migrator: MySQLMigrator):
+    pass
+
+
 with database.allow_sync():
+    database_version = ConfigData.get_and_update_database_version()
+    if database_version != ConfigData.database_version:
+        migrator_database(database_version, MySQLMigrator(database))
     database.create_tables([DBUser, Account, OperatorSearchRecord, OSROperator, PayRecord, DiamondRecord, GiftRecord])

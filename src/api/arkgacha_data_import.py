@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from src.api.accounts import AccountInDB
 from src.api.databases import database, OperatorSearchRecord, Account, OSROperator, Platform, PayRecord
 from src.api.datas import PoolInfo
+from src.logger import logger
 
 with open("data/arkgacha_public_key.pem", "rb") as key_file:
     public_key = serialization.load_pem_public_key(key_file.read())
@@ -25,7 +26,7 @@ def verify_signature(data: dict, signature: str) -> bool:
     except InvalidSignature:
         return False
     except Exception as e:
-        print(f'ERROR::verify_signature::{e}')
+        logger.warning(f'signature error: {e}')
         return False
 
 

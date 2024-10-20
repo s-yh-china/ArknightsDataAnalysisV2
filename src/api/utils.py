@@ -1,12 +1,13 @@
-from secrets import token_urlsafe
-from typing import cast
-
-import aiohttp
-
 from datetime import timedelta, timezone, datetime
+from asyncio import Semaphore, sleep
+from secrets import token_urlsafe
+from typing import cast, Optional, Coroutine, Any, Callable
+
+from aiohttp import ClientSession, ClientResponse
 from pydantic import BaseModel
 from jose import jwt
 
+from src.logger import logger
 from src.api.datas import ConfigData
 
 
@@ -16,29 +17,24 @@ class JustMsgModel(BaseModel):
 
 
 class AsyncRequest:
+    semaphore = Semaphore(5)  # 全局并发上限
+
     def __init__(self):
-        self._session: aiohttp.ClientSession
+        self._session: Optional[ClientSession] = None
 
     async def __aenter__(self) -> 'AsyncRequest':
-        self._session = aiohttp.ClientSession()
+        self._session = ClientSession()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        await self._session.close()
+        if self._session:
+            await self._session.close()
 
     async def get(self, url: str) -> dict[str, object]:
-        async with self._session.get(url) as response:
-            if response.status / 100 == 2:
-                return cast(dict[str, object], await response.json())
-            else:
-                raise ValueError(f'Response {url} status code is {response.status}')
+        return await self._request_with_retry(self._session.get, url)
 
     async def post_json(self, url: str, json_data: dict[str, object]) -> dict[str, object]:
-        async with self._session.post(url, json=json_data) as response:
-            if response.status / 100 == 2:
-                return cast(dict[str, object], await response.json())
-            else:
-                raise ValueError(f'Response {url} status code is {response.status}')
+        return await self._request_with_retry(self._session.post, url, json=json_data)
 
     async def post_json_with_csrf(self, url: str, json_data: dict[str, object]) -> dict[str, object]:
         token = token_urlsafe(24)
@@ -48,15 +44,29 @@ class AsyncRequest:
             'cookie': f'csrf_token={token}',
             'content-type': 'application/json;charset=UTF-8'
         }
-        async with self._session.post(url, json=json_data, headers=headers) as response:
-            if response.status / 100 == 2:
-                return cast(dict[str, object], await response.json())
-            else:
-                raise ValueError(f'Response {url} status code is {response.status}')
+        return await self._request_with_retry(self._session.post, url, json=json_data, headers=headers)
 
     @staticmethod
     def get_response[T](__type: type[T], response: dict[str, object]) -> T:
         return cast(__type, response.get('data'))
+
+    @classmethod
+    async def _request_with_retry(cls, func: Callable[..., Coroutine[Any, Any, ClientResponse]], url: str, retries: int = 3, **kwargs: Any) -> Optional[dict[str, object]]:
+        for attempt in range(retries):
+            async with cls.semaphore:
+                try:
+                    async with func(url, **kwargs) as response:
+                        if response.status // 100 == 2:
+                            return cast(dict[str, object], await response.json())
+                        else:
+                            raise ValueError(f'Response {url} status code is {response.status}')
+                except ConnectionResetError as e:
+                    logger.warning(f"Network error, attempt {attempt + 1}/{retries}: {e}")
+                    if attempt < retries - 1:
+                        await sleep(2 ** attempt)  # Exponential backoff
+                    else:
+                        logger.error(f"Failed after {retries} attempts")
+                        raise ValueError(f'Response {url} failed after {retries} attempts')
 
 
 def f_hide_mid(info: str, count: int = 4, fix: str = '*') -> str:

@@ -5,10 +5,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from src.api.datas import ConfigData
+from src.api.auto_data_update import update_all_accounts_data, auto_get_gift, update_pool_info
 from src.backapi import users, captcha
 from src.backapi import statistics, email, accounts, account_datas, utils
-from src.api.datas import ConfigData, PoolInfo
-from src.api.auto_data_update import update_all_accounts_data, auto_get_gift
 
 config = ConfigData().get_data()
 
@@ -23,9 +23,9 @@ async def lifespan(app: FastAPI):  # noqa
     minute, hour, day, month, day_of_week = config['analysis']['auto_gift'].split()
     scheduler.add_job(auto_get_gift, 'cron', hour=hour, minute=minute, day=day, month=month, day_of_week=day_of_week, misfire_grace_time=3600)
 
-    pool_info = PoolInfo()
     minute, hour, day, month, day_of_week = config['analysis']['pool_info_update'].split()
-    scheduler.add_job(lambda: pool_info.update_data(), 'cron', hour=hour, minute=minute, day=day, month=month, day_of_week=day_of_week, misfire_grace_time=60)
+    scheduler.add_job(update_pool_info, 'cron', hour=hour, minute=minute, day=day, month=month, day_of_week=day_of_week, misfire_grace_time=60)
+
     scheduler.start()
     yield
     scheduler.shutdown()
@@ -59,4 +59,4 @@ else:
 
 @app.get("/")
 async def root():
-    return {"message": "这里应该放一个系统可用性表"}
+    return {"status": "ok"}
