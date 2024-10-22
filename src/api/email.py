@@ -10,7 +10,8 @@ from pydantic import BaseModel
 from src.api.databases import DBUser
 from src.api.users import get_user_email, UserInDB, get_password_hash
 from src.api.utils import decode_jwt, create_jwt, JustMsgModel
-from src.api.datas import ConfigData
+from src.api.datas import ConfigData, EmailInfo
+from src.data_store import get_res_path
 
 
 class EmailResetPassword(BaseModel):
@@ -26,28 +27,18 @@ class EmailVerifyInfo(JustMsgModel):
     type: str
 
 
-def build_email_verify_link(token: str) -> str:
-    return f"{ConfigData.get_email()['link']}?token={token}"
+async def send_email(to_address: str, token: str, type: str):
+    email_data = EmailInfo.get_email(type)
 
-
-async def send_email(to_address: str, token: str):
     message = EmailMessage()
-    message["From"] = ConfigData.get_email()['username']
-    message["To"] = to_address
-    message["Subject"] = "密码重置 / 邮箱验证"
 
-    html_content = f"""
-    <html>
-    <body>
-    <h1>密码重置 / 邮箱验证</h1>
-    <p>您好，</p>
-    <p>我们收到了一个请求，要求重置您的密码 / 验证您的邮箱。点击下面的链接进行操作：</p>
-    <a href="{build_email_verify_link(token)}">重置密码 / 验证邮箱</a>
-    <p>如果您没有提出这个请求，您可以忽略这封邮件。</p>
-    </body>
-    </html>
-    """  # TODO custom
-    message.add_alternative(html_content, subtype='html')
+    message["From"] = email_data['from'].replace('%EMAIL%', ConfigData.get_email()['username'])
+    message["To"] = to_address
+    message["Subject"] = email_data['subject']
+    with open(get_res_path() / email_data['content_file'], encoding='utf-8') as email_file:
+        email_context = email_file.read()
+        email_context = email_context.replace('%TOKEN%', token)
+        message.add_alternative(email_context, subtype='html')
 
     await aiosmtplib.send(
         message,

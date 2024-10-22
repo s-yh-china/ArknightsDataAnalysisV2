@@ -50,10 +50,6 @@ if __name__ == '__main__':
                     "handlers": ["default"],
                     "level": "INFO",
                     "propagate": False,
-                },
-                "sqlalchemy.engine": {
-                    "handlers": ["default"],
-                    "propagate": False,
                 }
             }
         }

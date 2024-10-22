@@ -44,7 +44,7 @@ class JsonData:
 
 
 class ConfigData(JsonData):
-    version: str = '0.2.0'
+    version: str = '0.2.1'
     database_version: str = '0.1.0'
     data: dict = {
         'version': version,
@@ -70,8 +70,7 @@ class ConfigData(JsonData):
             'port': 465,
             'username': '',
             'password': '',
-            'use_tls': True,
-            'link': ''
+            'use_tls': True
         },
         'analysis': {
             'update_time': '20 4 * * *',
@@ -129,6 +128,9 @@ class ConfigData(JsonData):
             }
             local_config['database_version'] = '0.1.0'
             local_config['safe']['LOG_LEVEL'] = 'INFO'
+        if config_version == '0.2.0':
+            config_version = '0.2.1'
+            del local_config['email']['link']
         local_config['version'] = config_version
         cls.data = local_config
         cls.update_data()
@@ -271,6 +273,26 @@ class GiftCodeInfo(JsonData):
     @classmethod
     def get_gift_code(cls, server: str = 'OFFICIAL') -> list[str]:
         return cls.data.get(server, [])
+
+
+class EmailInfo(JsonData):
+    data: dict[str, dict[str, str]] = {
+        "verify_email": {
+            'subject': '邮箱验证',
+            'from': '邮箱验证 <%EMAIL%>',
+            'content_file': 'data/email/default.html',
+        },
+        "change_password": {
+            'subject': '密码重置',
+            'from': '密码重置 <%EMAIL%>',
+            'content_file': 'data/email/default.html',
+        }
+    }
+    data_file = 'data/email.json'
+
+    @classmethod
+    def get_email(cls, type: str) -> dict[str, str]:
+        return cls.data.get(type, {'subject': '邮件系统', 'content_file': 'data/email/default.html', 'from': '%EMAIL%'})
 
 
 # init

@@ -63,7 +63,7 @@ async def register(data: UserCreate, tasks: BackgroundTasks) -> UserInfo:
 
     if ConfigData.get_user()['verify_email']:
         token = await create_email_verify(data.email, 'verify_email')
-        tasks.add_task(send_email, data.email, token)
+        tasks.add_task(send_email, data.email, token, 'verify_email')
 
     return user
 
@@ -87,5 +87,5 @@ async def password_reset(payload: EmailResetPassword, tasks: BackgroundTasks):
             detail="Password reset is not allowed",
         )
     token = await create_email_verify(payload.email, 'change_password', payload.model_dump())
-    tasks.add_task(send_email, payload.email, token)
+    tasks.add_task(send_email, payload.email, token, 'change_password')
     return JustMsgModel(code=202, msg="accept")

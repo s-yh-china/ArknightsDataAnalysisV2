@@ -144,3 +144,5 @@ cache
 
 # data
 data/pool_info.json
+data/email.json
+data/email/

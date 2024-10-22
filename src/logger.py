@@ -11,6 +11,7 @@ from pathlib import Path
 import loguru
 
 from src.api.datas import ConfigData
+from src.data_store import get_res_path
 
 if TYPE_CHECKING:
     # avoid     sphinx autodoc resolve annotation failed
@@ -148,9 +149,6 @@ def format_record(record: Any) -> str:
     return format_string
 
 
-root_path = Path(__file__).parents[1]
-
-
 def get_log_file_path() -> Path:
     time_now = datetime.now()
     last_log = max(Path("./log").glob("log_*"), default=None, key=os.path.getmtime)
@@ -161,21 +159,6 @@ def get_log_file_path() -> Path:
         log_file = f'log/log_{time_now.strftime("%Y-%m-%d_%H-%M-%S")}.log'
 
     return Path(log_file)
-
-
-def get_res_path(_path: str | list[str] | None = None) -> Path:
-    if _path:
-        if isinstance(_path, str):
-            path = root_path / _path
-        else:
-            path = root_path.joinpath(*_path)
-    else:
-        path = root_path
-
-    if not path.exists():
-        path.mkdir(parents=True)
-
-    return path
 
 
 safe_data = ConfigData.get_safe()
