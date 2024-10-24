@@ -2,12 +2,14 @@ import random
 import base64
 
 from io import BytesIO
+from datetime import timedelta
 
 from pydantic import BaseModel
 from fastapi import HTTPException, status
 from PIL import Image, ImageDraw, ImageFont
 from jose import JWTError, ExpiredSignatureError
 
+from src.config import conf
 from src.api.utils import create_jwt, decode_jwt
 
 
@@ -92,8 +94,11 @@ def noise(image, width=120, height=35, line_count=3, point_count=15):
     return image
 
 
+CAPTCHA_TOKEN_EXPIRE_MINUTES = 60 if conf.safe.DEBUG else 5
+
+
 def create_captcha_token(captcha_code: str) -> str:
-    return create_jwt({'captcha_code': captcha_code})
+    return create_jwt({'captcha_code': captcha_code}, expires_delta=timedelta(minutes=CAPTCHA_TOKEN_EXPIRE_MINUTES))
 
 
 def valid_captcha_code(captcha: CaptchaValid):
