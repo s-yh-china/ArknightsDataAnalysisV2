@@ -10,7 +10,7 @@ from pathlib import Path
 
 import loguru
 
-from src.api.datas import ConfigData
+from src.config import conf
 from src.data_store import get_res_path
 
 if TYPE_CHECKING:
@@ -161,8 +161,7 @@ def get_log_file_path() -> Path:
     return Path(log_file)
 
 
-safe_data = ConfigData.get_safe()
-LEVEL: str = 'DEBUG' if safe_data['DEBUG'] else safe_data['LOG_LEVEL']
+LEVEL: str = 'DEBUG' if conf.safe.DEBUG else conf.safe.LOG_LEVEL
 
 logger.remove()
 logger.add(sys.stdout, level=LEVEL, diagnose=False, format=format_record)

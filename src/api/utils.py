@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from jose import jwt
 
 from src.logger import logger
-from src.api.datas import ConfigData
+from src.config import conf
 
 
 class JustMsgModel(BaseModel):
@@ -106,9 +106,9 @@ def create_jwt(data: dict, expires_delta: timedelta = timedelta(minutes=60)) -> 
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(to_encode, ConfigData.get_safe()['SECRET_KEY'], algorithm=ConfigData.get_safe()['ALGORITHM'])
+    encoded_jwt = jwt.encode(to_encode, conf.safe.SECRET_KEY, algorithm=conf.safe.ALGORITHM)
     return encoded_jwt
 
 
 def decode_jwt(encoded_jwt: str) -> dict:
-    return jwt.decode(encoded_jwt, ConfigData.get_safe()['SECRET_KEY'], algorithms=ConfigData.get_safe()['ALGORITHM'])
+    return jwt.decode(encoded_jwt, conf.safe.SECRET_KEY, algorithms=conf.safe.ALGORITHM)

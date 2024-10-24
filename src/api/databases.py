@@ -11,7 +11,7 @@ from playhouse.shortcuts import ReconnectMixin
 from peewee_async import AioModel
 from peewee_async import PooledMySQLDatabase as AsyncPooledMySQLDatabase
 
-from src.api.datas import ConfigData
+from src.config import conf, ConfigData
 from src.api.models import UserConfig
 
 
@@ -25,7 +25,7 @@ class ReconnectAsyncPooledMySQLDatabase(ReconnectMixin, AsyncPooledMySQLDatabase
         return cls._instance
 
 
-database = ReconnectAsyncPooledMySQLDatabase.get_db_instance(**ConfigData.get_mysql())
+database = ReconnectAsyncPooledMySQLDatabase.get_db_instance(**conf.mysql.model_dump())
 database.set_allow_sync(False)
 
 

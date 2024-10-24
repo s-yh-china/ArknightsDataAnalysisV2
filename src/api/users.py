@@ -47,18 +47,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return checkpw(plain_password.encode(), hashed_password.encode())
 
 
-async def get_user(username: str) -> UserInDB | None:
+async def get_user_by_name(username: str) -> UserInDB | None:
     if user := await DBUser.aio_get_or_none(DBUser.username == username):
         return UserInDB(**user.__data__)
 
 
-async def get_user_email(email: str) -> UserInDB | None:
+async def get_user_by_email(email: str) -> UserInDB | None:
     if user := await DBUser.aio_get_or_none(DBUser.email == email):
         return UserInDB(**user.__data__)
 
 
 async def authenticate_user(username: str, password: str) -> UserInfo | None:
-    user: UserInDB | None = await get_user(username)
+    user: UserInDB | None = await get_user_by_name(username)
     if user is None:
         return None
     if not verify_password(password, user.hashed_password):
@@ -85,7 +85,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
 
-    user = await get_user(username=token_data.username)
+    user = await get_user_by_name(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -104,7 +104,7 @@ def get_password_hash(password: str) -> str:
 async def create_user(username: str, password: str, email: str) -> UserInfo:
     password = get_password_hash(password)
     await DBUser.aio_create(username=username, hashed_password=password, email=email, user_config=UserConfig().model_dump_json())
-    return await get_user(username)
+    return await get_user_by_name(username)
 
 
 async def modify_user_config(user: UserInDB, config: UserConfig) -> None:

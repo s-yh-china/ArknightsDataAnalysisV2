@@ -3,10 +3,10 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.api.datas import ConfigData
+from src.config import conf
 from src.api.email import EmailResetPassword, create_email_verify, send_email
 from src.api.users import Token, UserInfo, UserCreate, UserInDB, UserConfig
-from src.api.users import authenticate_user, get_current_active_user, get_user, create_user, get_user_email
+from src.api.users import authenticate_user, get_current_active_user, get_user_by_name, create_user, get_user_by_email
 from src.api.users import modify_user_config
 
 from src.api.captcha import valid_captcha_code
@@ -49,9 +49,9 @@ def refresh_token(current_user: UserInfo = Depends(get_current_active_user)) -> 
 
 @router.post("/register", response_model=UserInfo, dependencies=[Depends(valid_captcha_code)])
 async def register(data: UserCreate, tasks: BackgroundTasks) -> UserInfo:
-    user: UserInfo = await get_user(data.username)
+    user: UserInfo = await get_user_by_name(data.username)
     if not user:
-        user = await get_user_email(data.email)
+        user = await get_user_by_email(data.email)
     if user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,7 +61,7 @@ async def register(data: UserCreate, tasks: BackgroundTasks) -> UserInfo:
 
     user = await create_user(data.username, data.password, data.email)
 
-    if ConfigData.get_user()['verify_email']:
+    if conf.user.email_verify:
         token = await create_email_verify(data.email, 'verify_email')
         tasks.add_task(send_email, data.email, token, 'verify_email')
 
@@ -81,7 +81,7 @@ async def modify_config(config: UserConfig, current_user: UserInDB = Depends(get
 
 @router.post('/password_reset', response_model=JustMsgModel, status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(valid_captcha_code)])
 async def password_reset(payload: EmailResetPassword, tasks: BackgroundTasks):
-    if not ConfigData.get_user()['password_reset']:
+    if not conf.user.password_reset:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password reset is not allowed",

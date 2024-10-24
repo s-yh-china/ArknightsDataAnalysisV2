@@ -7,10 +7,11 @@ from email.message import EmailMessage
 
 from pydantic import BaseModel
 
+from src.config import conf
 from src.api.databases import DBUser
-from src.api.users import get_user_email, UserInDB, get_password_hash
+from src.api.users import get_user_by_email, UserInDB, get_password_hash
 from src.api.utils import decode_jwt, create_jwt, JustMsgModel
-from src.api.datas import ConfigData, EmailInfo
+from src.api.datas import EmailInfo
 from src.data_store import get_res_path
 
 
@@ -32,7 +33,7 @@ async def send_email(to_address: str, token: str, type: str):
 
     message = EmailMessage()
 
-    message["From"] = email_data['from'].replace('%EMAIL%', ConfigData.get_email()['username'])
+    message["From"] = email_data['from'].replace('%EMAIL%', conf.email.username)
     message["To"] = to_address
     message["Subject"] = email_data['subject']
     with open(get_res_path() / email_data['content_file'], encoding='utf-8') as email_file:
@@ -42,11 +43,11 @@ async def send_email(to_address: str, token: str, type: str):
 
     await aiosmtplib.send(
         message,
-        hostname=ConfigData.get_email()['smtp'],
-        port=ConfigData.get_email()['port'],
-        username=ConfigData.get_email()['username'],
-        password=ConfigData.get_email()['password'],
-        use_tls=ConfigData.get_email()['use_tls'],
+        hostname=conf.email.smtp,
+        port=conf.email.port,
+        username=conf.email.username,
+        password=conf.email.password,
+        use_tls=conf.email.use_tls,
     )
 
 
@@ -63,7 +64,7 @@ async def email_verify(verify_token: str) -> EmailVerifyInfo:
 
         if email is None or type is None:
             raise credentials_exception
-        user: UserInDB = await get_user_email(email)
+        user: UserInDB = await get_user_by_email(email)
         if user is None:
             raise credentials_exception
         db_user = await user.get_db()
@@ -84,7 +85,7 @@ async def email_verify(verify_token: str) -> EmailVerifyInfo:
 
 
 async def create_email_verify(email: str, type: str, ex_data: dict = None) -> str:
-    user: UserInDB = await get_user_email(email)
+    user: UserInDB = await get_user_by_email(email)
     db_user: DBUser = await user.get_db()
     if user is None:
         raise HTTPException(

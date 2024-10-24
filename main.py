@@ -6,7 +6,7 @@ try:
 except ImportError:
     winloop = None
 
-from src.api.datas import ConfigData
+from src.config import conf
 from src.logger import logger
 
 if __name__ == '__main__':
@@ -15,16 +15,15 @@ if __name__ == '__main__':
         logger.info('winloop is enabled!')
     colorama.init()
 
-    is_debug = ConfigData.get_safe()['DEBUG']
-    web_config = ConfigData.get_web()
+    is_debug = conf.safe.DEBUG
     uvicorn.run(
         "src.app:app",
         reload=is_debug,
-        host=web_config['host'],
-        port=web_config['port'],
-        workers=web_config['workers'],
-        proxy_headers=bool(web_config['forward-ip']),
-        forwarded_allow_ips=web_config['forward-ip'],
+        host=conf.web.host,
+        port=conf.web.port,
+        workers=conf.web.workers,
+        proxy_headers=bool(conf.web.forward_ip),
+        forwarded_allow_ips=conf.web.forward_ip,
         log_config={
             "version": 1,
             "disable_existing_loggers": True,
