@@ -1,4 +1,25 @@
+import re
+
 from pydantic import BaseModel
+from pydantic.functional_validators import AfterValidator
+
+from typing import Annotated
+
+
+def check_cron(v: str):
+    if not re.match(r'^(\*|([0-5]?\d)) (\*|([0-2]?\d)) (\*|([0-3]?\d)) (\*|([0-1]?\d)) (\*|([0-7]))$', v.strip()):
+        raise ValueError(f'Invalid cron expression: {v}')
+    return v
+
+
+def check_log_level(v: str):
+    if v not in ['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL']:
+        raise ValueError(f'Invalid log level: {v}')
+    return v
+
+
+CronType = Annotated[str, AfterValidator(check_cron)]
+LogLevelType = Annotated[str, AfterValidator(check_log_level)]
 
 
 class COSRConfig(BaseModel):
@@ -10,9 +31,9 @@ class COSRConfig(BaseModel):
 
 class SafeConfig(BaseModel):
     SECRET_KEY: str
-    ALGORITHM: str  # TODO enum
+    ALGORITHM: str  # TODO check
     DEBUG: bool
-    LOG_LEVEL: str  # TODO enum
+    LOG_LEVEL: LogLevelType
     CORS: COSRConfig
 
 
@@ -29,11 +50,10 @@ class EmailConfig(BaseModel):
     use_tls: bool
 
 
-# TODO corn check
 class AnalysisConfig(BaseModel):
-    update_time: str
-    auto_gift: str
-    pool_info_update: str
+    update_time: CronType
+    auto_gift: CronType
+    pool_info_update: CronType
     pool_info_url: str
 
 

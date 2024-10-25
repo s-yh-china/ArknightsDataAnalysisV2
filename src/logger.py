@@ -151,8 +151,7 @@ def format_record(record: Any) -> str:
 
 def get_log_file_path() -> Path:
     time_now = datetime.now()
-    last_log = max(Path("./log").glob("log_*"), default=None, key=os.path.getmtime)
-
+    last_log: None | Path = max(Path("./log").glob("log_*"), default=None, key=os.path.getmtime)
     if last_log and (time_now - datetime.fromtimestamp(last_log.stat().st_mtime)) < timedelta(hours=1):
         log_file = f"log/{last_log.name}"
     else:
@@ -162,6 +161,8 @@ def get_log_file_path() -> Path:
 
 
 LEVEL: str = 'DEBUG' if conf.safe.DEBUG else conf.safe.LOG_LEVEL
+if conf.safe.LOG_LEVEL == 'TRACE':
+    LEVEL = 'TRACE'  # 允许设置为更低等级的LEVEL
 
 logger.remove()
 logger.add(sys.stdout, level=LEVEL, diagnose=False, format=format_record)
