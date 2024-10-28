@@ -5,8 +5,7 @@ from src.api.email import email_verify
 
 router = APIRouter(
     prefix="/api/email",
-    tags=["email"],
-    responses={404: {"description": "Not found"}}
+    tags=["email"]
 )
 
 

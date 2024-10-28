@@ -6,8 +6,7 @@ from src.api.datas import PoolInfo
 
 router = APIRouter(
     prefix="/api/utils",
-    tags=["utils"],
-    responses={404: {"description": "Not found"}}
+    tags=["utils"]
 )
 
 

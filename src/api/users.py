@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from jose import JWTError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from bcrypt import checkpw, hashpw, gensalt
 
 from src.api.databases import DBUser
@@ -34,13 +34,13 @@ class UserInfo(UserBase):
 
 
 class UserInDB(UserInfo):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
     hashed_password: str
 
-    class Config:
-        from_attributes = True
-
-    async def get_db(self) -> DBUser | None:
-        return await DBUser.aio_get_or_none(DBUser.username == self.username)
+    async def get_db(self) -> DBUser:
+        return await DBUser.aio_get(DBUser.id == self.id)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -49,20 +49,28 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 async def get_user_by_name(username: str) -> UserInDB | None:
     if user := await DBUser.aio_get_or_none(DBUser.username == username):
-        return UserInDB(**user.__data__)
+        return UserInDB.model_validate(user)
 
 
 async def get_user_by_email(email: str) -> UserInDB | None:
     if user := await DBUser.aio_get_or_none(DBUser.email == email):
-        return UserInDB(**user.__data__)
+        return UserInDB.model_validate(user)
 
 
-async def authenticate_user(username: str, password: str) -> UserInfo | None:
-    user: UserInDB | None = await get_user_by_name(username)
+async def authenticate_user(data: OAuth2PasswordRequestForm = Depends()) -> UserInfo | None:
+    user: UserInDB | None = await get_user_by_name(data.username)
     if user is None:
-        return None
-    if not verify_password(password, user.hashed_password):
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="user.login.username_error",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    if not verify_password(data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="user.login.password_error",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     return user
 
 
@@ -72,8 +80,8 @@ oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="api/users/l
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail="user.current.credentials_invalid",
+        headers={"WWW-Authenticate": "Bearer"}
     )
 
     try:
@@ -93,7 +101,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 async def get_current_active_user(current_user: UserInfo = Depends(get_current_user)):
     if current_user.disabled:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="user.current.disabled",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     return current_user
 
 

@@ -3,6 +3,7 @@ import json
 from enum import Enum
 from typing import Any
 
+from peewee import DoesNotExist
 from peewee import CharField, BooleanField, ForeignKeyField, IntegerField, TimestampField, AutoField
 from playhouse.migrate import MySQLMigrator, migrate
 from playhouse.mysql_ext import JSONField
@@ -100,6 +101,13 @@ class Account(BaseModel):
     token = CharField(max_length=300)
     channel = EnumField(AccountChannel)
     available = BooleanField()
+
+    @classmethod
+    async def aio_get_by_uid(cls, uid: str):
+        try:
+            return await cls.select(cls, DBUser).join(DBUser).where(Account.uid == uid).aio_get()
+        except DoesNotExist:
+            return None
 
 
 class OperatorSearchRecord(BaseModel):

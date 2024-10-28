@@ -54,7 +54,7 @@ async def send_email(to_address: str, token: str, type: str):
 async def email_verify(verify_token: str) -> EmailVerifyInfo:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="email.verify.credentials_invalid",
     )
 
     try:
@@ -85,13 +85,7 @@ async def email_verify(verify_token: str) -> EmailVerifyInfo:
 
 
 async def create_email_verify(email: str, type: str, ex_data: dict = None) -> str:
-    user: UserInDB = await get_user_by_email(email)
-    db_user: DBUser = await user.get_db()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User not found",
-        )
+    db_user: DBUser = await (await get_user_by_email(email)).get_db()
 
     if not ex_data:
         ex_data = {}
@@ -113,7 +107,7 @@ async def create_email_verify(email: str, type: str, ex_data: dict = None) -> st
         case _:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid type"
+                detail="email.create.unsupported_type"
             )
 
     return create_jwt(data, timedelta(hours=12))

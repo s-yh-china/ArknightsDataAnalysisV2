@@ -1,7 +1,6 @@
 import json
-
-from hashlib import sha256
-from base64 import b64decode
+import base64
+import asyncio
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -19,19 +18,18 @@ with open("data/arkgacha_public_key.pem", "rb") as key_file:
 
 def verify_signature(data: dict, signature: str) -> bool:
     json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
-    digest = sha256(json_str.encode("utf-8")).digest()
     try:
-        public_key.verify(b64decode(signature), digest, padding.PKCS1v15(), hashes.SHA256())
+        public_key.verify(base64.b64decode(signature), json_str.encode("utf-8"), padding.PKCS1v15(), hashes.SHA256())
         return True
     except InvalidSignature:
         return False
     except Exception as e:
-        logger.warning(f'signature error: {e}')
+        logger.warning(f'verify signature error: {e}')
         return False
 
 
 async def __gacha_data_import(data: dict[str, dict[str, str | list[list[str | int]]]], account: AccountInDB):
-    account: Account = await account.get_db()
+    db_account: Account = await account.get_db()
     async with database.aio_atomic():
         for time, item in data.items():
             time: int = int(time)
@@ -45,7 +43,7 @@ async def __gacha_data_import(data: dict[str, dict[str, str | list[list[str | in
                 pool_id = PoolInfo.get_pool_id_by_info(real_pool, time)
 
             osr: OperatorSearchRecord
-            osr, created = await OperatorSearchRecord.aio_get_or_create(account=account, time=time, defaults={'real_pool': real_pool, 'pool_id': pool_id})
+            osr, created = await OperatorSearchRecord.aio_get_or_create(account=db_account, time=time, defaults={'real_pool': real_pool, 'pool_id': pool_id})
 
             pool_info = PoolInfo.get_pool_info(pool_id)
             is_up_pool = 'up_char_info' in pool_info
@@ -100,34 +98,39 @@ async def data_import(data: bytes, account: AccountInDB):
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Invalid json file'
+            detail='arkgacha_import.file_not_json'
         )
     if info := data.get('info'):
         if not isinstance(info, dict):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Invalid info'
+                detail='arkgacha_import.no_info'
             )
         if verify := info.get('verify'):
             del data['info']['verify']
             if not verify_signature(data, verify):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail='Invalid signature'
+                    detail='arkgacha_import.invalid_signature'
                 )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Missing verify signature'
+                detail='arkgacha_import.miss_signature'
             )
 
-        match info.get('type'):
+        match info.get('export_type'):
             case 'gacha':
-                await __gacha_data_import(data.get('data'), account)
+                _ = asyncio.create_task(__gacha_data_import(data.get('data'), account))
             case 'pay':
-                await __pay_data_import(data.get('data'), account)
+                _ = asyncio.create_task(__pay_data_import(data.get('data'), account))
+            case _:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail='arkgacha_import.unsupported_export_type'
+                )
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Missing info'
+            detail='arkgacha_import.no_info'
         )

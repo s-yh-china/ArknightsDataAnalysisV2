@@ -6,8 +6,7 @@ from src.api.account_datas import get_osr_info, get_osr_pool_info, get_pay_recor
 
 router = APIRouter(
     prefix="/api/accounts/data",
-    tags=["account datas"],
-    responses={404: {"description": "Not found"}}
+    tags=["account datas"]
 )
 
 

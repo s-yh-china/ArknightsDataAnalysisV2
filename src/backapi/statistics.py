@@ -7,8 +7,7 @@ from src.api.utils import JustMsgModel
 
 router = APIRouter(
     prefix="/api/statistics",
-    tags=["statistics"],
-    responses={404: {"description": "Not found"}}
+    tags=["statistics"]
 )
 
 

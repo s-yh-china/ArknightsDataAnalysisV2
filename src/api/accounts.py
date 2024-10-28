@@ -1,11 +1,11 @@
 import asyncio
 
-from src.api.databases import Account, AccountChannel, DBUser, database
+from src.api.databases import Account, AccountChannel, DBUser
 from src.api.users import UserBase, UserInDB, get_current_active_user
 from src.api.arknights_data_analysis import ArknightsDataAnalysis
 
 from fastapi import HTTPException, status, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AccountBase(BaseModel):
@@ -19,17 +19,17 @@ class AccountInfo(AccountBase):
 
 
 class AccountInDB(AccountInfo):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
     token: str
 
-    class Config:
-        from_attributes = True
-
-    async def get_db(self) -> Account | None:
-        return await Account.aio_get_or_none(Account.uid == self.uid)
+    async def get_db(self) -> Account:
+        return await Account.aio_get(Account.id == self.id)
 
 
 class AccountRefresh(AccountBase):
-    force: bool
+    force: bool = False
     token: str | None = None
 
 
@@ -41,8 +41,7 @@ class AccountCreate(BaseModel):
 async def get_accounts(user: UserBase) -> list[AccountInDB]:
     accounts = []
     for account in await Account.select().join_from(Account, DBUser).where(DBUser.username == user.username).aio_execute():
-        await ArknightsDataAnalysis.get_analysis(account)
-        accounts.append(AccountInDB(**account.__data__))
+        accounts.append(AccountInDB.model_validate(account))
     return accounts
 
 
@@ -53,11 +52,11 @@ async def get_account_by_token(account_create: AccountCreate) -> AccountInDB:
     if analysis:
         if created:
             _ = asyncio.create_task(analysis.fetch_data(True))
-        return AccountInDB(**analysis.account.__data__)
+        return AccountInDB.model_validate(analysis.account)
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token Invalid"
+            detail="account.create.token_invalid"
         )
 
 
@@ -70,29 +69,28 @@ async def add_account_to_user(account_create: AccountCreate, user: UserInDB):
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not Accepted"
+            detail="account.create.token_invalid"
         )
 
 
 async def get_account_by_uid(account: AccountBase, user: UserBase = Depends(get_current_active_user)) -> AccountInDB:
-    db_account: Account = await Account.aio_get_or_none(Account.uid == account.uid)
+    db_account: Account = await Account.aio_get_by_uid(account.uid)
     if not db_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account Not Found"
+            detail="account.not_found"
         )
 
-    with database.allow_sync():
-        if user.username != db_account.owner.username:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not Accepted"
-            )
+    if user.id != db_account.owner.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="account.not_owner"
+        )
 
-    return AccountInDB(**db_account.__data__)
+    return AccountInDB.model_validate(db_account)
 
 
-async def del_account_by_uid(account: AccountInDB):
+async def del_account(account: AccountInDB):
     db_account: Account = await account.get_db()
     if db_account.owner:
         db_account.owner = None
@@ -102,17 +100,12 @@ async def del_account_by_uid(account: AccountInDB):
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not Accepted"
+            detail="account.remove.no_owner"
         )
 
 
 async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefresh):
     db_account: Account = await account.get_db()
-    if not db_account:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account Not Found"
-        )
 
     analysis: ArknightsDataAnalysis
     if refresh_info.token:
@@ -123,7 +116,7 @@ async def refresh_account_data(account: AccountInDB, refresh_info: AccountRefres
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account Token Invalid, Need Refresh Token"
+            detail="account.refresh.token_invalid"
         )
 
     _ = asyncio.create_task(analysis.fetch_data(refresh_info.force))

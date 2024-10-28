@@ -107,18 +107,18 @@ def valid_captcha_code(captcha: CaptchaValid):
         captcha_code: str = payload.get("captcha_code")
         if captcha_code.lower() != captcha.code.lower():
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate captcha code"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="captcha.invalid_code"
             )
     except ExpiredSignatureError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Captcha signature expired"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="captcha.expired_token"
         )
     except JWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate captcha"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="captcha.invalid_token"
         )
 
 

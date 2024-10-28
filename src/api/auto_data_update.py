@@ -2,7 +2,7 @@ from asyncio import sleep
 
 from src.api.arknights_data_request import ArknightsDataRequest, create_request_by_token
 from src.api.arknights_data_analysis import ArknightsDataAnalysis
-from src.api.databases import Account, GiftRecord
+from src.api.databases import Account, GiftRecord, DBUser
 from src.api.datas import GiftCodeInfo, PoolInfo
 from src.logger import logger
 
@@ -21,14 +21,17 @@ async def update_all_accounts_data():
 
 
 async def auto_get_gift():
-    logger.info('auto_get_gift start')
+    logger.info('Start auto_get_gift')
     gift_code = GiftCodeInfo.get_gift_code()
     if not gift_code:
         logger.info('No gift code, end')
         return
 
+    account_n = 0
+    gift_n = 0
+
     account: Account
-    for account in await Account.select().where(Account.owner.is_null(False) & Account.available == True).aio_execute():
+    for account in await Account.select(Account, DBUser).join(DBUser).where(Account.owner.is_null(False) & Account.available == True).aio_execute():
         if not Account.owner.user_config.is_auto_gift:
             continue
 
@@ -38,14 +41,17 @@ async def auto_get_gift():
         if not need_gift_code:
             continue
 
+        account_n += 1
         request: ArknightsDataRequest = create_request_by_token(account.token, account.channel)
         try:
             for code in need_gift_code:
                 if await request.try_get_gift(code):
                     logger.debug(f'Add gift code {code} to {account.uid} success')
+                    gift_n += 1
                 await sleep(1)
         except ValueError:
             continue
+    logger.info(f'Stop auto_get_gift, check {account_n} accounts, and use {gift_n} gift codes')
 
 
 def update_pool_info():
