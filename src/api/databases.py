@@ -61,6 +61,11 @@ class UserConfigField(CJSONField):
     def python_value(self, value: Any) -> UserConfig:
         return UserConfig.model_validate_json(super().python_value(value))
 
+    def db_value(self, value: Any) -> str:
+        if isinstance(value, UserConfig):
+            value = value.model_dump_json()
+        return super().db_value(value)
+
 
 class OnlyTimestampField(TimestampField):
     def python_value(self, value: Any) -> int:

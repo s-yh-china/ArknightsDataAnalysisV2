@@ -67,6 +67,7 @@ async def register(data: UserCreate, tasks: BackgroundTasks) -> UserInfo:
     if conf.user.email_verify:
         token = await create_email_verify(data.email, 'verify_email')
         tasks.add_task(send_email, data.email, token, 'verify_email')
+        user.disabled = True  # 数据不会自动刷新
 
     return user
 
