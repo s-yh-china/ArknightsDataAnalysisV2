@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, status, UploadFile
+from fastapi import APIRouter, Depends, status, UploadFile, HTTPException
 
 from src.api.users import get_current_active_user, UserBase, UserInDB
 from src.api.accounts import AccountInfo, AccountInDB, AccountCreate, AccountRefresh, AccountBase
 from src.api.accounts import get_accounts, get_account_by_token, add_account_to_user, get_account_by_uid, del_account
 from src.api.accounts import refresh_account_data
+from src.api.arknights_data_analysis import ArknightsDataAnalysis
 from src.api.arkgacha_data_import import data_import
 from src.api.utils import JustMsgModel
 from src.api.captcha import valid_captcha_code, CaptchaValid
@@ -33,6 +34,17 @@ async def add_account(account: AccountCreate, current_user: UserInDB = Depends(g
 @router.post("/info", response_model=AccountInfo)
 async def account_info(account: AccountInfo = Depends(get_account_by_uid)):
     return account
+
+
+@router.post("/info/check", response_model=JustMsgModel)
+async def account_info_check(account: AccountInDB = Depends(get_account_by_uid)):
+    if await ArknightsDataAnalysis.get_analysis(await account.get_db()):
+        return JustMsgModel(code=200, msg="ok")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="account.info.token_invalid"
+        )
 
 
 @router.post("/delete", response_model=JustMsgModel, dependencies=[Depends(valid_captcha_code)])
