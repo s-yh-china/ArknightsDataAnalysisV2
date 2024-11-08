@@ -7,9 +7,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from src.config import conf
-from src.api.auto_data_update import update_all_accounts_data, auto_get_gift, update_pool_info
 from src.backapi import users, captcha
 from src.backapi import statistics, email, accounts, account_datas, utils
+from src.api.auto_data_update import update_all_accounts_data, auto_get_gift, update_pool_info
 
 
 @asynccontextmanager

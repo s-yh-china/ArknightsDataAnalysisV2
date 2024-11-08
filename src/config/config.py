@@ -3,7 +3,7 @@ import json
 
 
 class ConfigData:
-    version: str = '0.2.2'
+    version: str = '0.2.3'
     database_version: str = '0.1.0'
     data: dict = {
         'version': version,
@@ -15,6 +15,7 @@ class ConfigData:
             'LOG_LEVEL': 'INFO',
             'CORS': {
                 'allow_origins': ['*'],
+                'allow_origin_regex': None,
                 'allow_credentials': True,
                 'allow_methods': ['*'],
                 'allow_headers': ['*']
@@ -102,6 +103,9 @@ class ConfigData:
         if config_version == '0.2.1':
             config_version = '0.2.2'
             local_config['web']['forward_ip'] = local_config['web'].pop('forward-ip')
+        if config_version == '0.2.2':
+            config_version = '0.2.3'
+            local_config['safe']['CORS']['allow_origin_regex'] = None
         local_config['version'] = config_version
         cls.data = local_config
         cls.update_data()

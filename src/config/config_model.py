@@ -27,6 +27,7 @@ class COSRConfig(BaseModel):
     allow_credentials: bool
     allow_methods: list[str]
     allow_headers: list[str]
+    allow_origin_regex: list[str] | None
 
 
 class SafeConfig(BaseModel):
