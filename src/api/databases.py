@@ -103,7 +103,7 @@ class Account(BaseModel):
     uid = CharField(max_length=20, unique=True)
     owner = ForeignKeyField(DBUser, backref='ark_accs', null=True)
     nickname = CharField(max_length=50)
-    token = CharField(max_length=300)
+    token = CharField(max_length=500)
     channel = EnumField(AccountChannel)
     available = BooleanField()
 
@@ -177,7 +177,12 @@ class GiftRecord(BaseModel):
 
 
 def migrator_database(version: str, migrator: MySQLMigrator):
-    pass
+    if version == '0.1.0':
+        version = '0.1.1'
+        migrate(
+            migrator.alter_column_type(Account, 'token', CharField(max_length=500)),
+        )
+    return version
 
 
 with database.allow_sync():

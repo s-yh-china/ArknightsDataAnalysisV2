@@ -4,7 +4,7 @@ import json
 
 class ConfigData:
     version: str = '0.2.3'
-    database_version: str = '0.1.0'
+    database_version: str = '0.1.1'
     data: dict = {
         'version': version,
         'database_version': database_version,
