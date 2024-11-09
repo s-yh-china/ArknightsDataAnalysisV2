@@ -180,7 +180,7 @@ def migrator_database(version: str, migrator: MySQLMigrator):
     if version == '0.1.0':
         version = '0.1.1'
         migrate(
-            migrator.alter_column_type(Account, 'token', CharField(max_length=500)),
+            migrator.alter_column_type('Account', 'token', CharField(max_length=500)),
         )
     return version
 
