@@ -57,6 +57,7 @@ class ArknightsDataAnalysis:
             last_time = record.time
 
         osr_datas: list = await self.request.get_cards_record(last_time)
+        logger.debug(osr_datas)
 
         async with database.aio_atomic():
             item: dict
@@ -104,6 +105,7 @@ class ArknightsDataAnalysis:
             last_time = record.operate_time
 
         diamond_datas: list = await self.request.get_diamond_record(last_time)
+        logger.debug(diamond_datas)
 
         async with database.aio_atomic():
             item: dict
@@ -131,6 +133,7 @@ class ArknightsDataAnalysis:
 
     async def fetch_pay_record(self) -> None:
         pay_datas: list = await self.request.get_pay_record()
+        logger.debug(pay_datas)
 
         async with database.aio_atomic():
             item: dict
@@ -154,6 +157,7 @@ class ArknightsDataAnalysis:
 
     async def fetch_gift_record(self) -> None:
         gift_datas: list = await self.request.get_gift_record()
+        logger.debug(gift_datas)
 
         async with database.aio_atomic():
             item: dict

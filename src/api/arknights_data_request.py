@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
+from bisect import bisect_right
 from typing import cast, override
 from urllib.parse import quote
-from abc import ABC, abstractmethod
 
 from src.api.databases import AccountChannel
 from src.api.utils import AsyncRequest
@@ -130,22 +131,10 @@ class OfficialArknightsDataRequest(ArknightsDataRequest):
 
     @staticmethod
     async def add_conditional_data(page_data: list[dict[str, object]], data_list: list[dict[str, object]], last_time: int) -> bool:
-        left, right = 0, len(page_data)
-
-        while left < right:
-            mid = (left + right) // 2
-            mid_time: int = cast(int, page_data[mid]['ts'])
-
-            if mid_time > last_time:
-                right = mid
-            else:
-                left = mid + 1
-
-        if left < len(page_data):
-            data_list.extend(page_data[left:])
-            return True
-        else:
-            return False
+        page_data = page_data[::-1]
+        left = bisect_right(page_data, last_time, key=lambda item: cast(int, item['ts']))
+        data_list.extend(page_data[left:])
+        return left < 1
 
 
 class BiliBiliArknightsDataRequest(OfficialArknightsDataRequest):
