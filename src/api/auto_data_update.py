@@ -32,7 +32,7 @@ async def auto_get_gift():
 
     account: Account
     for account in await Account.select(Account, DBUser).join(DBUser).where(Account.owner.is_null(False) & Account.available == True).aio_execute():
-        if not Account.owner.user_config.is_auto_gift:
+        if not account.owner.user_config.is_auto_gift:
             continue
 
         used_gift_code = [record.code for record in await GiftRecord.select().where(GiftRecord.account == account).aio_execute()]
